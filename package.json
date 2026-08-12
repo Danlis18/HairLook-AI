@@ -1,0 +1,31 @@
+{
+  "name": "hairlook-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Production-ready AI hairstyle consultation platform",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "worker": "node src/worker.js",
+    "check": "node --check src/server.js && node --check src/worker.js && node --check public/app.js && node --check public/dashboard.js && node --check public/admin.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.57.0",
+    "compression": "1.8.1",
+    "cookie-parser": "1.4.7",
+    "express": "5.1.0",
+    "express-rate-limit": "8.0.1",
+    "helmet": "8.1.0",
+    "multer": "2.0.2",
+    "nodemailer": "7.0.5",
+    "replicate": "1.0.1",
+    "sharp": "0.34.3",
+    "zod": "4.0.17"
+  },
+  "packageManager": "npm@10"
+}

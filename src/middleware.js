@@ -1,0 +1,21 @@
+import { config } from './config.js';
+import { repo } from './lib/repository.js';
+import { tokenHash } from './lib/crypto.js';
+
+export async function leadSession(req,res,next){
+  try{const raw=req.cookies?.hair_lead_session;if(!raw)return res.status(401).json({error:'sign_in_required'});const lead=await repo.getLeadBySession(tokenHash(raw));if(!lead)return res.status(401).json({error:'session_expired'});req.lead=lead;next();}catch(e){next(e);}
+}
+export async function optionalLeadSession(req,res,next){
+  try{const raw=req.cookies?.hair_lead_session;if(raw)req.lead=await repo.getLeadBySession(tokenHash(raw));next();}catch(e){next(e);}
+}
+export async function adminSession(req,res,next){
+  try{const raw=req.cookies?.hair_admin_session;if(!raw)return res.status(401).json({error:'admin_sign_in_required'});const admin=await repo.getAdminBySession(tokenHash(raw));if(!admin)return res.status(401).json({error:'admin_session_expired'});req.admin=admin;next();}catch(e){next(e);}
+}
+export function sameOrigin(req,res,next){
+  if(['GET','HEAD','OPTIONS'].includes(req.method))return next();
+  const origin=req.get('origin');
+  if(!origin)return next();
+  try{if(new URL(origin).origin!==new URL(config.appUrl).origin)return res.status(403).json({error:'origin_not_allowed'});}catch{return res.status(403).json({error:'origin_not_allowed'});}
+  next();
+}
+export function noStore(req,res,next){res.set('Cache-Control','no-store');next();}
