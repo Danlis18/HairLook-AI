@@ -60,22 +60,19 @@ export const config = Object.freeze({
   adminSessionTtlHours: integer(process.env.ADMIN_SESSION_TTL_HOURS, 12),
 
   maxUploadMb: integer(process.env.MAX_UPLOAD_MB, 12),
-  originalRetentionHours: integer(process.env.ORIGINAL_RETENTION_HOURS, 24),
+  originalRetentionHours: integer(process.env.ORIGINAL_RETENTION_HOURS, 720),
   resultRetentionDays: integer(process.env.RESULT_RETENTION_DAYS, 30),
   signedUrlTtlSeconds: integer(process.env.SIGNED_URL_TTL_SECONDS, 300),
   ipHashSalt: process.env.IP_HASH_SALT || 'demo-salt',
 
   checkoutEnabled: bool(process.env.CHECKOUT_ENABLED, true),
-  generationEnabled: bool(process.env.GENERATION_ENABLED, true),
+  generationEnabled: bool(process.env.GENERATION_ENABLED, false),
   maintenanceMode: bool(process.env.MAINTENANCE_MODE, false),
   logLevel: process.env.LOG_LEVEL || 'info'
 });
 
 export function assertProductionConfig() {
   if (!config.isProduction || config.demoMode) return;
-  // Manual-fulfillment production mode: Supabase + PayPro Global + a human uploading
-  // results by hand. SMTP and the Replicate/worker stack are optional add-ons, never
-  // required for the site to start or for checkout/admin/dashboard to function.
   const required = [
     ['APP_URL', process.env.APP_URL],
     ['SESSION_SECRET', process.env.SESSION_SECRET],
@@ -91,9 +88,14 @@ export function assertProductionConfig() {
     ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
   ];
   if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
-  // Customer email OTP verification sends a real code by email; without SMTP it cannot
-  // work, so fail loudly at boot instead of silently letting customers get stuck.
-  if (config.emailVerificationEnabled) required.push(['SMTP_HOST (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpHost], ['EMAIL_FROM', process.env.EMAIL_FROM]);
+  if (config.emailVerificationEnabled) {
+    required.push(
+      ['SMTP_HOST (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpHost],
+      ['SMTP_USER (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpUser],
+      ['SMTP_PASS (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpPass],
+      ['EMAIL_FROM', process.env.EMAIL_FROM]
+    );
+  }
   const missing = required.filter(([,v]) => !v).map(([k]) => k);
   if (missing.length) throw new Error(`Missing required production variables: ${missing.join(', ')}`);
 }
