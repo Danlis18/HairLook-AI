@@ -58,6 +58,18 @@ app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/admin', adminRoutes);
 
+// Customer emails use the clean /auth/magic URL. The actual handler lives under
+// /api/auth/magic, so proxy the original token/query there instead of letting it hit 404.
+app.get('/auth/magic', (req, res) => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(req.query || {})) {
+    if (Array.isArray(value)) value.forEach(v => params.append(key, String(v)));
+    else if (value != null) params.set(key, String(value));
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  res.redirect(307, `/api/auth/magic${suffix}`);
+});
+
 if (config.demoMode) {
   const safeDemoFile = (dir, key) => {
     const base = path.resolve(root, dir);
