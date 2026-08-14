@@ -19,7 +19,6 @@ const quizSchema=z.object({
   stylePersonality:z.string().max(50),maintenanceLevel:z.string().max(50),bangsPreference:z.string().max(50),grayPreference:z.string().max(60)
 });
 
-
 function parseJsonField(value, fallback={}) {
   if (value == null || value === '') return fallback;
   try { return JSON.parse(value); } catch { const error=new Error('Invalid JSON field'); error.name='ZodError'; throw error; }
@@ -83,8 +82,10 @@ router.post('/verify-email',sameOrigin,leadSession,async(req,res,next)=>{try{
   if(challenge.attempts>=challenge.max_attempts)return res.status(429).json({error:'max_attempts_exceeded'});
   const match=safeEqual(sha256(code),challenge.code_hash);
   if(!match){await repo.touchEmailChallenge(challenge.id,{attempts:challenge.attempts+1});return res.status(400).json(generic);}
-  await repo.touchEmailChallenge(challenge.id,{used_at:new Date().toISOString()});
-  await repo.updateLead(req.lead.id,{email_verified_at:new Date().toISOString()});
+  const verifiedAt=new Date().toISOString();
+  await repo.touchEmailChallenge(challenge.id,{used_at:verifiedAt});
+  await repo.updateLead(req.lead.id,{email_verified_at:verifiedAt});
+  await repo.insertAnalytics({session_id:'server',lead_id:req.lead.id,event_name:'email_verified',metadata:{}}).catch(()=>{});
   res.json({ok:true});
 }catch(e){next(e);}});
 
@@ -97,6 +98,20 @@ router.post('/verify-email/resend',sameOrigin,leadSession,async(req,res,next)=>{
     if(elapsedSeconds<config.emailVerificationResendSeconds)return res.status(429).json({error:'resend_cooldown',retryAfterSeconds:Math.ceil(config.emailVerificationResendSeconds-elapsedSeconds)});
   }
   const devCode=await issueEmailChallenge(req.lead);
+  res.json({ok:true,...(config.demoMode?{devCode}:{})});
+}catch(e){next(e);}});
+
+router.post('/verify-email/change',sameOrigin,leadSession,async(req,res,next)=>{try{
+  if(!config.emailVerificationEnabled)return res.status(404).json({error:'not_found'});
+  if(req.lead.payment_status==='paid')return res.status(409).json({error:'email_locked_after_payment'});
+  const email=emailSchema.parse(req.body.email);
+  if(email===String(req.lead.email||'').toLowerCase() && !req.lead.email_verified_at){
+    const last=await repo.getLatestEmailChallenge(req.lead.id);
+    if(last){const elapsedSeconds=(Date.now()-new Date(last.created_at).getTime())/1000;if(elapsedSeconds<config.emailVerificationResendSeconds)return res.status(429).json({error:'resend_cooldown',retryAfterSeconds:Math.ceil(config.emailVerificationResendSeconds-elapsedSeconds)});}
+  }
+  const updated=await repo.updateLead(req.lead.id,{email,email_verified_at:null});
+  const devCode=await issueEmailChallenge(updated);
+  await repo.insertAnalytics({session_id:'server',lead_id:req.lead.id,event_name:'email_changed',metadata:{}}).catch(()=>{});
   res.json({ok:true,...(config.demoMode?{devCode}:{})});
 }catch(e){next(e);}});
 
