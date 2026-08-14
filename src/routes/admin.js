@@ -1,13 +1,17 @@
 import { Router } from 'express';
+import { randomUUID } from 'node:crypto';
+import multer from 'multer';
+import sharp from 'sharp';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { repo } from '../lib/repository.js';
-import { randomToken, tokenHash } from '../lib/crypto.js';
+import { randomToken, tokenHash, safeEqual } from '../lib/crypto.js';
 import { sendMagicLink, sendResultsReady } from '../lib/mailer.js';
-import { signedOriginalUrl, signedResultUrl, deleteOriginal, deleteResult } from '../lib/storage.js';
+import { signedOriginalUrl, signedResultUrl, putResult, deleteOriginal, deleteResult } from '../lib/storage.js';
 import { adminSession, sameOrigin, noStore } from '../middleware.js';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 1 } });
 const emailSchema = z.string().trim().toLowerCase().email().max(254);
 const uuidSchema = z.string().uuid();
 
@@ -15,10 +19,17 @@ function adminCookieOptions() {
   return {
     httpOnly: true,
     secure: config.isProduction,
-    sameSite: 'lax',
+    sameSite: 'strict',
     maxAge: config.adminSessionTtlHours * 3600_000,
     path: '/'
   };
+}
+
+async function startAdminSession(res, email) {
+  const sessionRaw = randomToken();
+  const expiresAt = new Date(Date.now() + config.adminSessionTtlHours * 3600_000).toISOString();
+  await repo.createAdminSession(email, tokenHash(sessionRaw), expiresAt);
+  res.cookie('hair_admin_session', sessionRaw, adminCookieOptions());
 }
 
 function csvCell(value) {
@@ -26,6 +37,29 @@ function csvCell(value) {
   const raw = Array.isArray(value) ? value.join(' | ') : typeof value === 'object' ? JSON.stringify(value) : String(value);
   return /[",\n\r]/.test(raw) ? `"${raw.replaceAll('"', '""')}"` : raw;
 }
+
+// Public: lets the /admin login page know which login methods are usable without
+// requiring an authenticated session or leaking any secret values.
+router.get('/login-methods', (req, res) => {
+  res.json({ passwordLogin: !!config.adminPassword, magicLink: config.demoMode || !!config.smtpHost });
+});
+
+router.post('/auth/login', sameOrigin, async (req, res, next) => {
+  try {
+    const invalid = () => res.status(401).json({ error: 'invalid_credentials' });
+    const emailParse = emailSchema.safeParse(req.body?.email);
+    const password = String(req.body?.password ?? '');
+    if (!config.adminPassword) return invalid();
+    const email = emailParse.success ? emailParse.data : '';
+    // Always run both checks (no short-circuit) so response timing doesn't reveal which one failed.
+    const emailOk = !!email && config.adminEmails.includes(email);
+    const passwordOk = safeEqual(password, config.adminPassword);
+    if (!emailOk || !passwordOk) return invalid();
+    await startAdminSession(res, email);
+    await repo.audit({ adminEmail: email, action: 'admin_login', targetType: 'admin', metadata: { method: 'password' } });
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
 
 router.post('/auth/request-link', sameOrigin, async (req, res, next) => {
   try {
@@ -46,10 +80,7 @@ router.get('/magic', async (req, res, next) => {
     const raw = z.string().min(20).max(200).parse(req.query.token);
     const link = await repo.consumeMagicLink(tokenHash(raw));
     if (!link || link.purpose !== 'admin' || !config.adminEmails.includes(String(link.email).toLowerCase())) return res.redirect('/admin?error=expired');
-    const sessionRaw = randomToken();
-    const expiresAt = new Date(Date.now() + config.adminSessionTtlHours * 3600_000).toISOString();
-    await repo.createAdminSession(link.email, tokenHash(sessionRaw), expiresAt);
-    res.cookie('hair_admin_session', sessionRaw, adminCookieOptions());
+    await startAdminSession(res, link.email);
     res.redirect('/admin');
   } catch (error) { next(error); }
 });
@@ -120,7 +151,7 @@ router.post('/customers/:id/retry', sameOrigin, adminSession, async (req, res, n
   try {
     const id = uuidSchema.parse(req.params.id);
     const count = await repo.retryFailedJobs(id);
-    if (count) await repo.updateLead(id, { generation_status: 'queued' });
+    if (count) await repo.updateLead(id, { generation_status: 'manual_pending' });
     await repo.audit({ adminEmail: req.admin.email, action: 'generation_retry', targetType: 'customer', targetId: id, metadata: { count } });
     res.json({ ok: true, count });
   } catch (error) { next(error); }
@@ -134,6 +165,59 @@ router.post('/customers/:id/send-results', sameOrigin, adminSession, async (req,
     await sendResultsReady({ to: lead.email });
     await repo.audit({ adminEmail: req.admin.email, action: 'results_email_send', targetType: 'customer', targetId: id });
     res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+router.post('/customers/:id/results', sameOrigin, adminSession, upload.single('photo'), async (req, res, next) => {
+  try {
+    const id = uuidSchema.parse(req.params.id);
+    const lead = await repo.getLead(id);
+    if (!lead) return res.status(404).json({ error: 'not_found' });
+    if (lead.payment_status !== 'paid') return res.status(409).json({ error: 'not_paid' });
+    if (!req.file) return res.status(400).json({ error: 'photo_required' });
+    let meta; try { meta = await sharp(req.file.buffer, { failOn: 'error' }).metadata(); } catch { return res.status(400).json({ error: 'invalid_image' }); }
+    if (!['jpeg','png','webp','heif'].includes(meta.format)) return res.status(400).json({ error: 'unsupported_image' });
+    const buffer = await sharp(req.file.buffer, { failOn: 'error' }).rotate().resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 90, chromaSubsampling: '4:4:4' }).toBuffer();
+    const existing = await repo.listResults(id);
+    const sortOrder = existing.length ? Math.max(...existing.map(r => r.sort_order || 0)) + 1 : 1;
+    const category = String(req.body.category || 'Recommended').slice(0, 60);
+    const styleName = String(req.body.styleName || `Manual result ${sortOrder}`).slice(0, 80);
+    const resultId = randomUUID();
+    const storagePath = await putResult(id, resultId, buffer, 'image/jpeg');
+    await repo.addResult({ id: resultId, lead_id: id, job_id: null, category, style_name: styleName, sort_order: sortOrder, storage_path: storagePath, provider: 'manual', model: null, provider_prediction_id: null, cost_usd: 0, metadata: { uploadedBy: req.admin.email } });
+    if (!['manual_processing','completed'].includes(lead.generation_status)) await repo.updateLead(id, { generation_status: 'manual_processing' });
+    await repo.audit({ adminEmail: req.admin.email, action: 'result_upload', targetType: 'customer', targetId: id, metadata: { resultId, category, styleName } });
+    res.status(201).json({ ok: true, result: { id: resultId, category, style_name: styleName, sort_order: sortOrder, url: await signedResultUrl(storagePath) } });
+  } catch (error) { next(error); }
+});
+
+router.delete('/customers/:id/results/:resultId', sameOrigin, adminSession, async (req, res, next) => {
+  try {
+    const id = uuidSchema.parse(req.params.id);
+    const resultId = uuidSchema.parse(req.params.resultId);
+    const result = await repo.getResult(resultId);
+    if (!result || result.lead_id !== id || result.deleted_at) return res.status(404).json({ error: 'not_found' });
+    await deleteResult(result.storage_path).catch(() => {});
+    await repo.markResultDeleted(resultId);
+    await repo.audit({ adminEmail: req.admin.email, action: 'result_delete', targetType: 'customer', targetId: id, metadata: { resultId } });
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+router.post('/customers/:id/complete', sameOrigin, adminSession, async (req, res, next) => {
+  try {
+    const id = uuidSchema.parse(req.params.id);
+    const lead = await repo.getLead(id);
+    if (!lead) return res.status(404).json({ error: 'not_found' });
+    const count = await repo.countResults(id);
+    if (!count) return res.status(400).json({ error: 'no_results' });
+    const updated = await repo.updateLead(id, { generation_status: 'completed' });
+    if (!updated?.results_notified_at) {
+      await sendResultsReady({ to: lead.email }).catch(() => {});
+      await repo.updateLead(id, { results_notified_at: new Date().toISOString() });
+    }
+    await repo.audit({ adminEmail: req.admin.email, action: 'fulfillment_complete', targetType: 'customer', targetId: id, metadata: { count } });
+    res.json({ ok: true, count });
   } catch (error) { next(error); }
 });
 
@@ -192,9 +276,20 @@ router.get('/audit', noStore, adminSession, async (req, res, next) => {
   catch (error) { next(error); }
 });
 
+function csvAmount(row) {
+  if (row.payment_amount == null) return '';
+  return `${row.payment_amount}${row.payment_currency ? ` ${row.payment_currency}` : ''}`;
+}
+
+function csvUtm(row) {
+  const utm = {};
+  for (const key of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) if (row[key]) utm[key.replace('utm_','')] = row[key];
+  return utm;
+}
+
 router.get('/export/customers.csv', adminSession, async (req, res, next) => {
   try {
-    const header = ['customer_id','email','age_range','gender','current_length','desired_length','texture','current_color','desired_colors','style_goals','gray_preference','payment_status','payment_amount','payment_currency','paid_at','generation_status','result_count','utm_source','utm_medium','utm_campaign','utm_content','created_at'];
+    const header = ['Email','Age','Gender','Quiz','Payment','Amount','PayPro Order ID','Fulfillment Status','Date','UTM'];
     const lines = [header.join(',')];
     let offset=0;
     let exported=0;
@@ -202,8 +297,20 @@ router.get('/export/customers.csv', adminSession, async (req, res, next) => {
     while(true){
       const {rows,total}=await repo.listLeads({limit:batchSize,offset});
       if(!rows.length)break;
-      const counts=await repo.resultCounts(rows.map(row=>row.id));
-      for(const row of rows)lines.push(header.map(key=>csvCell(key==='customer_id'?row.id:key==='result_count'?(counts[row.id]||0):row[key])).join(','));
+      for(const row of rows){
+        lines.push([
+          csvCell(row.email),
+          csvCell(row.age_range),
+          csvCell(row.gender),
+          csvCell(row.quiz_answers),
+          csvCell(row.payment_status),
+          csvCell(csvAmount(row)),
+          csvCell(row.payment_order_id),
+          csvCell(row.generation_status),
+          csvCell(row.created_at),
+          csvCell(csvUtm(row))
+        ].join(','));
+      }
       exported+=rows.length;
       offset+=rows.length;
       if(offset>=total||rows.length<batchSize)break;

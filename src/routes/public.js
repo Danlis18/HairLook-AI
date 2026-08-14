@@ -8,7 +8,6 @@ import { putOriginal, signedResultUrl, deleteOriginal, deleteResult } from '../l
 import { randomToken, tokenHash, hashIp } from '../lib/crypto.js';
 import { buildCheckoutUrl } from '../lib/paypro.js';
 import { sendMagicLink } from '../lib/mailer.js';
-import { buildGenerationJobs } from '../services/prompts.js';
 import { leadSession, optionalLeadSession, sameOrigin, noStore } from '../middleware.js';
 
 const router=Router();
@@ -75,10 +74,9 @@ router.post('/checkout',sameOrigin,leadSession,async(req,res,next)=>{try{
 
 router.post('/demo/pay',sameOrigin,leadSession,async(req,res,next)=>{try{
   if(!config.demoMode)return res.status(404).end();
-  const settings=await repo.getSettings();const price=Number(settings.price_display_usd||config.priceDisplayUsd);const target=Math.min(30,Math.max(1,Number(settings.generation_target_count||config.generationTargetCount)));
-  await repo.updateLead(req.lead.id,{payment_status:'paid',payment_order_id:`DEMO-${Date.now()}`,payment_amount:price,payment_currency:'USD',paid_at:new Date().toISOString(),generation_status:'queued'});
+  const settings=await repo.getSettings();const price=Number(settings.price_display_usd||config.priceDisplayUsd);
+  await repo.updateLead(req.lead.id,{payment_status:'paid',payment_order_id:`DEMO-${Date.now()}`,payment_amount:price,payment_currency:'USD',paid_at:new Date().toISOString(),generation_status:'manual_pending'});
   await repo.upsertPayment({lead_id:req.lead.id,provider:'demo',provider_order_id:`DEMO-${req.lead.id}`,status:'paid',amount:price,currency:'USD',paid_at:new Date().toISOString(),raw_payload:{demo:true}});
-  const jobs=buildGenerationJobs(req.lead,target,'demo');await repo.enqueueJobsIfEmpty(req.lead.id,jobs);
   await repo.insertAnalytics({session_id:req.body?.sessionId||'demo',lead_id:req.lead.id,event_name:'payment_success',metadata:{provider:'demo'}});
   res.json({ok:true,redirect:'/dashboard'});
 }catch(e){next(e);}});

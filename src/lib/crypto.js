@@ -7,9 +7,9 @@ export const hmacSha256 = (key, value) => crypto.createHmac('sha256', String(key
 export const randomToken = (bytes = 32) => crypto.randomBytes(bytes).toString('base64url');
 export const tokenHash = (token) => sha256(token);
 export const safeEqual = (a, b) => {
-  const aa = Buffer.from(String(a || ''));
-  const bb = Buffer.from(String(b || ''));
-  return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
+  const aa = Buffer.from(sha256(String(a ?? '')), 'hex');
+  const bb = Buffer.from(sha256(String(b ?? '')), 'hex');
+  return crypto.timingSafeEqual(aa, bb);
 };
 export const hashIp = (ip) => sha256(`${config.ipHashSalt}:${ip || ''}`);
 export const eventFingerprint = (parts) => sha256(parts.map(v => v ?? '').join('|'));

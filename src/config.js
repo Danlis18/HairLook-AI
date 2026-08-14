@@ -48,6 +48,8 @@ export const config = Object.freeze({
   emailFrom: process.env.EMAIL_FROM || 'HairLook AI <results@example.com>',
 
   adminEmails: list(process.env.ADMIN_EMAILS),
+  adminPassword: process.env.ADMIN_PASSWORD || '',
+  manualFulfillmentMode: bool(process.env.MANUAL_FULFILLMENT_MODE, true),
   magicLinkTtlMinutes: integer(process.env.MAGIC_LINK_TTL_MINUTES, 20),
   sessionTtlDays: integer(process.env.SESSION_TTL_DAYS, 30),
   adminSessionTtlHours: integer(process.env.ADMIN_SESSION_TTL_HOURS, 12),
@@ -66,25 +68,24 @@ export const config = Object.freeze({
 
 export function assertProductionConfig() {
   if (!config.isProduction || config.demoMode) return;
+  // Manual-fulfillment production mode: Supabase + PayPro Global + a human uploading
+  // results by hand. SMTP and the Replicate/worker stack are optional add-ons, never
+  // required for the site to start or for checkout/admin/dashboard to function.
   const required = [
     ['APP_URL', process.env.APP_URL],
     ['SESSION_SECRET', process.env.SESSION_SECRET],
+    ['IP_HASH_SALT', process.env.IP_HASH_SALT],
     ['SUPABASE_URL', config.supabaseUrl],
     ['SUPABASE_SECRET_KEY', config.supabaseSecretKey],
-    ['IP_HASH_SALT', process.env.IP_HASH_SALT],
-    ['SUPPORT_EMAIL', process.env.SUPPORT_EMAIL],
-    ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
-    ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS],
-    ['ADMIN_EMAILS', process.env.ADMIN_EMAILS],
-    ['SMTP_HOST', process.env.SMTP_HOST],
-    ['EMAIL_FROM', process.env.EMAIL_FROM]
-  ];
-  if (config.checkoutEnabled) required.push(
     ['PAYPRO_PRODUCT_ID', config.payproProductId],
     ['PAYPRO_SECRET_KEY', config.payproSecretKey],
-    ['PAYPRO_VALIDATION_KEY', config.payproValidationKey]
-  );
-  if (config.generationEnabled) required.push(['REPLICATE_API_TOKEN', config.replicateToken]);
+    ['PAYPRO_VALIDATION_KEY', config.payproValidationKey],
+    ['ADMIN_EMAILS', process.env.ADMIN_EMAILS],
+    ['SUPPORT_EMAIL', process.env.SUPPORT_EMAIL],
+    ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
+    ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
+  ];
+  if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
   const missing = required.filter(([,v]) => !v).map(([k]) => k);
   if (missing.length) throw new Error(`Missing required production variables: ${missing.join(', ')}`);
 }

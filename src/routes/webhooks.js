@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { repo } from '../lib/repository.js';
 import { verifyWebhook, parseCustomFields, verifyLeadCorrelation, sanitizeWebhookPayload, paymentEventId } from '../lib/paypro.js';
-import { buildGenerationJobs } from '../services/prompts.js';
 import { log } from '../lib/log.js';
 
 const router=Router();
@@ -21,8 +20,8 @@ router.post('/paypro',async(req,res,next)=>{try{
   const type=String(body.IPN_TYPE_NAME||'');const status=String(body.ORDER_STATUS||'');const amount=Number(body.ORDER_TOTAL_AMOUNT||0);const currency=String(body.ORDER_CURRENCY_CODE||body.ORDER_BILLING_CURRENCY_CODE||config.payproCurrency);
   if(type==='OrderCharged' && status==='Processed'){
     await repo.upsertPayment({lead_id:lead.id,provider:'paypro_global',provider_order_id:String(body.ORDER_ID),status:'paid',amount,currency,paid_at:new Date().toISOString(),raw_payload:safePayload});
-    const wasPaid=lead.payment_status==='paid';await repo.updateLead(lead.id,{payment_status:'paid',payment_order_id:String(body.ORDER_ID),payment_amount:amount,payment_currency:currency,paid_at:new Date().toISOString(),generation_status:wasPaid?lead.generation_status:'queued'});
-    if(!wasPaid){const settings=await repo.getSettings();const target=Math.min(30,Math.max(1,Number(settings.generation_target_count||config.generationTargetCount)));const jobs=buildGenerationJobs(lead,target,config.aiPrimaryModel);await repo.enqueueJobsIfEmpty(lead.id,jobs);await repo.insertAnalytics({session_id:'paypro',lead_id:lead.id,event_name:'payment_success',metadata:{orderId:String(body.ORDER_ID),amount,currency}});}
+    const wasPaid=lead.payment_status==='paid';await repo.updateLead(lead.id,{payment_status:'paid',payment_order_id:String(body.ORDER_ID),payment_amount:amount,payment_currency:currency,paid_at:new Date().toISOString(),generation_status:wasPaid?lead.generation_status:'manual_pending'});
+    if(!wasPaid){await repo.insertAnalytics({session_id:'paypro',lead_id:lead.id,event_name:'payment_success',metadata:{orderId:String(body.ORDER_ID),amount,currency}});}
   } else if(type==='OrderRefunded') {
     await repo.upsertPayment({lead_id:lead.id,provider:'paypro_global',provider_order_id:String(body.ORDER_ID),status:'refunded',amount,currency,refunded_at:new Date().toISOString(),raw_payload:safePayload});await repo.updateLead(lead.id,{payment_status:'refunded'});
   } else if(type==='OrderPartiallyRefunded') {

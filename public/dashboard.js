@@ -23,15 +23,21 @@ function showPaymentGate(status){
  if(waiting)pollTimer=setTimeout(load,3000);
 }
 function render(data){
- const results=data.results||[],target=Number(data.targetCount||30),pct=Math.min(100,Math.round(results.length/target*100));
- $('#progressText').textContent=`${results.length} of ${target} looks ready`;$('#progressPercent').textContent=`${pct}%`;$('#progressBar').style.width=`${pct}%`;
+ const results=data.results||[];
  const p=data.lead.profile||{};$('#profileStrip').innerHTML=[p.ageRange,p.currentLength&&`${p.currentLength} now`,p.desiredLength&&`${p.desiredLength} desired`,p.texture,p.currentColor,p.grayPreference].map(chip).join('');
- const grouped=Object.groupBy?Object.groupBy(results,r=>r.category):results.reduce((a,r)=>((a[r.category]??=[]).push(r),a),{});
- const sectionRoot=$('#resultSections');sectionRoot.innerHTML='';
- for(const category of categoryOrder){const rows=grouped[category]||[];const quota=category==='Recommended'?8:category==='Modern Layers'?6:category==='Easy-Care'?5:category==='Color Directions'?5:category==='Gray-Friendly'?3:3;if(!rows.length && results.length===target)continue;
-  const section=document.createElement('section');section.className='result-section';section.innerHTML=`<div class="result-section-head"><h2>${category}</h2><span class="result-count">${rows.length} ready</span></div><div class="result-grid"></div>`;const grid=$('.result-grid',section);
-  rows.forEach(r=>{const card=document.createElement('button');card.type='button';card.className='result-card';card.innerHTML=`<img src="${r.url}" alt="${escapeHtml(r.style_name)}" loading="lazy"><span class="result-card-label"><strong>${escapeHtml(r.style_name)}</strong>${escapeHtml(category)}</span>`;card.addEventListener('click',()=>openResult(r));grid.appendChild(card);});
-  const remaining=Math.max(0,Math.min(quota,target-results.length));for(let i=0;i<remaining;i++){const sk=document.createElement('div');sk.className='result-card result-skeleton';grid.appendChild(sk);}sectionRoot.appendChild(section);
+ $('#preparingNotice').hidden=!!results.length;
+ $('#progressCard').hidden=!results.length;
+ $('#resultSections').hidden=!results.length;
+ if(results.length){
+  $('#progressText').textContent=`${results.length} result${results.length===1?'':'s'} ready`;
+  const grouped=Object.groupBy?Object.groupBy(results,r=>r.category):results.reduce((a,r)=>((a[r.category]??=[]).push(r),a),{});
+  const categories=[...categoryOrder.filter(c=>grouped[c]?.length),...Object.keys(grouped).filter(c=>!categoryOrder.includes(c))];
+  const sectionRoot=$('#resultSections');sectionRoot.innerHTML='';
+  for(const category of categories){const rows=grouped[category]||[];
+   const section=document.createElement('section');section.className='result-section';section.innerHTML=`<div class="result-section-head"><h2>${escapeHtml(category)}</h2><span class="result-count">${rows.length} ready</span></div><div class="result-grid"></div>`;const grid=$('.result-grid',section);
+   rows.forEach(r=>{const card=document.createElement('button');card.type='button';card.className='result-card';card.innerHTML=`<img src="${r.url}" alt="${escapeHtml(r.style_name)}" loading="lazy"><span class="result-card-label"><strong>${escapeHtml(r.style_name)}</strong>${escapeHtml(category)}</span>`;card.addEventListener('click',()=>openResult(r));grid.appendChild(card);});
+   sectionRoot.appendChild(section);
+  }
  }
  if(results.length!==lastCount){lastCount=results.length;fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,eventName:'dashboard_view',metadata:{resultCount:results.length}})}).catch(()=>{});}
 }
