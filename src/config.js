@@ -27,8 +27,6 @@ export const config = Object.freeze({
 
   paymentProvider: process.env.PAYMENT_PROVIDER || 'paddle',
   paddleEnvironment: process.env.PADDLE_ENVIRONMENT || 'sandbox',
-  // Optional for future server-side Paddle API operations. Current checkout uses Paddle.js,
-  // so production only needs the client token, one-time price ID and webhook secret.
   paddleApiKey: process.env.PADDLE_API_KEY || '',
   paddleClientToken: process.env.PADDLE_CLIENT_TOKEN || '',
   paddlePriceId: process.env.PADDLE_PRICE_ID || '',
@@ -41,11 +39,7 @@ export const config = Object.freeze({
   workerConcurrency: integer(process.env.GENERATION_WORKER_CONCURRENCY, 2),
   workerPollMs: integer(process.env.GENERATION_POLL_INTERVAL_MS, 2500),
 
-  smtpHost: process.env.SMTP_HOST || '',
-  smtpPort: integer(process.env.SMTP_PORT, 587),
-  smtpSecure: bool(process.env.SMTP_SECURE, false),
-  smtpUser: process.env.SMTP_USER || '',
-  smtpPass: process.env.SMTP_PASS || '',
+  resendApiKey: process.env.RESEND_API_KEY || '',
   emailFrom: process.env.EMAIL_FROM || 'HairLook AI <results@example.com>',
 
   adminEmails: list(process.env.ADMIN_EMAILS),
@@ -93,9 +87,7 @@ export function assertProductionConfig() {
   if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
   if (config.emailVerificationEnabled) {
     required.push(
-      ['SMTP_HOST (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpHost],
-      ['SMTP_USER (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpUser],
-      ['SMTP_PASS (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpPass],
+      ['RESEND_API_KEY (required because EMAIL_VERIFICATION_ENABLED=true)', config.resendApiKey],
       ['EMAIL_FROM', process.env.EMAIL_FROM]
     );
   }
