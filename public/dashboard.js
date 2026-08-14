@@ -13,13 +13,12 @@ async function load(){
  const res=await fetch('/api/dashboard',{cache:'no-store'});if(res.status===401){location.href='/signin';return;}const data=await res.json();
  if(!res.ok)return;
  if(data.lead.paymentStatus!=='paid')return showPaymentGate(data.lead.paymentStatus);
- $('#paymentGate').hidden=true;$('#dashboardContent').hidden=false;render(data);
- if(!['completed','partial','failed'].includes(data.lead.generationStatus))pollTimer=setTimeout(load,3500);
+ clearTimeout(pollTimer);$('#paymentGate').hidden=true;$('#dashboardContent').hidden=false;render(data);
 }
 function showPaymentGate(status){
  clearTimeout(pollTimer);$('#dashboardContent').hidden=true;const gate=$('#paymentGate');gate.hidden=false;
  const waiting=['checkout_started','waiting'].includes(status);
- gate.innerHTML=`<div class="auth-card" style="margin:50px auto"><div class="logo"><span class="logo-mark"></span><span class="logo-name">HairLook AI</span></div><h1>${waiting?'Verifying your payment…':'Your collection is still locked.'}</h1><p>${waiting?'We only unlock generation after PayPro Global confirms the payment to our server. This page will recheck automatically.':'Complete the one-time secure checkout to start your private collection.'}</p><a class="btn btn-primary btn-wide" href="/personal-plan">${waiting?'Back to purchase page':'Continue to checkout'}</a></div>`;
+ gate.innerHTML=`<div class="auth-card" style="margin:50px auto"><div class="logo"><span class="logo-mark"></span><span class="logo-name">HairLook AI</span></div><h1>${waiting?'Verifying your payment…':'Your order is not paid yet.'}</h1><p>${waiting?'PayPro Global is confirming the payment with our server. This page will recheck automatically.':'Complete the one-time secure checkout to place your personalized hairstyle order.'}</p><a class="btn btn-primary btn-wide" href="/personal-plan">${waiting?'Back to purchase page':'Continue to checkout'}</a></div>`;
  if(waiting)pollTimer=setTimeout(load,3000);
 }
 function render(data){
@@ -29,6 +28,7 @@ function render(data){
  $('#progressCard').hidden=!results.length;
  $('#resultSections').hidden=!results.length;
  if(results.length){
+  $('#dashSubtitle').textContent='Your personalized hairstyle results are ready.';
   $('#progressText').textContent=`${results.length} result${results.length===1?'':'s'} ready`;
   const grouped=Object.groupBy?Object.groupBy(results,r=>r.category):results.reduce((a,r)=>((a[r.category]??=[]).push(r),a),{});
   const categories=[...categoryOrder.filter(c=>grouped[c]?.length),...Object.keys(grouped).filter(c=>!categoryOrder.includes(c))];
