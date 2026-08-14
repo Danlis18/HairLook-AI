@@ -27,6 +27,8 @@ export const config = Object.freeze({
 
   paymentProvider: process.env.PAYMENT_PROVIDER || 'paddle',
   paddleEnvironment: process.env.PADDLE_ENVIRONMENT || 'sandbox',
+  // Optional for future server-side Paddle API operations. Current checkout uses Paddle.js,
+  // so production only needs the client token, one-time price ID and webhook secret.
   paddleApiKey: process.env.PADDLE_API_KEY || '',
   paddleClientToken: process.env.PADDLE_CLIENT_TOKEN || '',
   paddlePriceId: process.env.PADDLE_PRICE_ID || '',
@@ -78,7 +80,6 @@ export function assertProductionConfig() {
     ['IP_HASH_SALT', process.env.IP_HASH_SALT],
     ['SUPABASE_URL', config.supabaseUrl],
     ['SUPABASE_SECRET_KEY', config.supabaseSecretKey],
-    ['PADDLE_API_KEY', config.paddleApiKey],
     ['PADDLE_CLIENT_TOKEN', config.paddleClientToken],
     ['PADDLE_PRICE_ID', config.paddlePriceId],
     ['PADDLE_WEBHOOK_SECRET', config.paddleWebhookSecret],
@@ -87,6 +88,8 @@ export function assertProductionConfig() {
     ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
     ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
   ];
+  if (config.paymentProvider !== 'paddle') required.push(['PAYMENT_PROVIDER must be paddle', config.paymentProvider === 'paddle' ? 'ok' : '']);
+  if (!['sandbox','production'].includes(config.paddleEnvironment)) required.push(['PADDLE_ENVIRONMENT must be sandbox or production', '']);
   if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
   if (config.emailVerificationEnabled) {
     required.push(
