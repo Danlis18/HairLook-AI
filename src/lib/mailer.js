@@ -3,75 +3,69 @@ import { log } from './log.js';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
+function escapeHtml(value=''){
+  return String(value).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function emailShell({preheader,title,lead,content,ctaLabel='',ctaUrl=''}){
+  const brand=escapeHtml(config.productName);
+  const support=escapeHtml(config.supportEmail);
+  const safeTitle=escapeHtml(title);
+  const safeLead=escapeHtml(lead);
+  const cta=ctaLabel&&ctaUrl?`<tr><td style="padding:8px 34px 32px"><a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#18372d;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:15px;font-weight:700;padding:15px 24px;border-radius:999px">${escapeHtml(ctaLabel)}</a></td></tr>`:'';
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4f1ea"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f1ea"><tr><td align="center" style="padding:34px 14px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:620px;background:#fcfaf6;border:1px solid #e5ded3;border-radius:26px;overflow:hidden"><tr><td style="padding:28px 34px 22px;border-bottom:1px solid #e8e1d6"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="46"><div style="width:42px;height:42px;border-radius:50% 50% 50% 14%;background:#18372d;color:#c7a66b;font-family:Georgia,serif;font-size:22px;line-height:42px;text-align:center">H</div></td><td style="padding-left:12px;font-family:Arial,sans-serif;font-size:20px;font-weight:800;color:#18211d">${brand}</td></tr></table></td></tr><tr><td style="padding:34px 34px 12px"><div style="font-family:Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#54705f;margin-bottom:14px">Private customer message</div><h1 style="font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:1.05;font-weight:400;letter-spacing:-1px;color:#18211d;margin:0 0 14px">${safeTitle}</h1><p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.65;color:#667069;margin:0">${safeLead}</p></td></tr>${content}${cta}<tr><td style="padding:22px 34px 30px;border-top:1px solid #e8e1d6;font-family:Arial,sans-serif;font-size:12px;line-height:1.6;color:#7a837e"><strong style="color:#435149">${brand}</strong><br>Questions? Contact <a href="mailto:${support}" style="color:#355b49">${support}</a>.<br><span style="color:#9a9f9c">This is a transactional message related to your HairLook AI consultation or private order.</span></td></tr></table></td></tr></table></body></html>`;
+}
+
 async function sendMailSafe({to,subject,text,html,reason}){
   if(!config.resendApiKey){
     log.info('email_skipped_resend_not_configured',{to,reason});
     return {skipped:true};
   }
-
   try{
     const response=await fetch(RESEND_API_URL,{
       method:'POST',
-      headers:{
-        'Authorization':`Bearer ${config.resendApiKey}`,
-        'Content-Type':'application/json'
-      },
-      body:JSON.stringify({
-        from:config.emailFrom,
-        to:[to],
-        subject,
-        text,
-        html
-      }),
+      headers:{'Authorization':`Bearer ${config.resendApiKey}`,'Content-Type':'application/json'},
+      body:JSON.stringify({from:config.emailFrom,to:[to],subject,text,html}),
       signal:AbortSignal.timeout(15_000)
     });
-
     const body=await response.json().catch(()=>({}));
     if(!response.ok){
-      log.error('email_send_failed',{
-        to,
-        reason,
-        provider:'resend',
-        status:response.status,
-        providerError:body?.name||body?.error||null,
-        providerMessage:body?.message||null
-      });
-      const wrapped=new Error('email_send_failed');
-      wrapped.status=502;
-      wrapped.code='EMAIL_SEND_FAILED';
-      throw wrapped;
+      log.error('email_send_failed',{to,reason,provider:'resend',status:response.status,providerError:body?.name||body?.error||null,providerMessage:body?.message||null});
+      const wrapped=new Error('email_send_failed'); wrapped.status=502; wrapped.code='EMAIL_SEND_FAILED'; throw wrapped;
     }
-
     log.info('email_sent',{to,reason,provider:'resend',messageId:body?.id||null});
     return {sent:true,id:body?.id||null};
   }catch(error){
     if(error?.code==='EMAIL_SEND_FAILED')throw error;
-    log.error('email_send_failed',{
-      to,
-      reason,
-      provider:'resend',
-      code:error?.code||error?.name||null,
-      message:error?.message||'Resend API request failed'
-    });
-    const wrapped=new Error('email_send_failed');
-    wrapped.status=502;
-    wrapped.code='EMAIL_SEND_FAILED';
-    throw wrapped;
+    log.error('email_send_failed',{to,reason,provider:'resend',code:error?.code||error?.name||null,message:error?.message||'Resend API request failed'});
+    const wrapped=new Error('email_send_failed'); wrapped.status=502; wrapped.code='EMAIL_SEND_FAILED'; throw wrapped;
   }
 }
 
 export async function sendMagicLink({to,url,admin=false}){
-  const subject=admin?`${config.productName} admin sign-in`:`Your ${config.productName} sign-in link`;
-  const text=`Use this secure one-time link to sign in:\n\n${url}\n\nThis link expires in ${config.magicLinkTtlMinutes} minutes.`;
-  const html=`<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#17231d"><h2 style="font-family:Georgia,serif">${admin?'Admin sign-in':'Your private results'}</h2><p>This one-time link expires in ${config.magicLinkTtlMinutes} minutes.</p><p><a href="${url}" style="display:inline-block;background:#18372d;color:white;text-decoration:none;padding:14px 20px;border-radius:999px">Sign in securely</a></p><p style="font-size:13px;color:#68716b">If you did not request this, you can ignore this email.</p></div>`;
+  const subject=admin?`${config.productName} admin sign-in`:`Your secure ${config.productName} sign-in link`;
+  const text=`Open your secure ${config.productName} access link: ${url}\n\nThis one-time link expires in ${config.magicLinkTtlMinutes} minutes. If you did not request it, you can ignore this email.`;
+  const html=emailShell({
+    preheader:`Your secure ${config.productName} one-time sign-in link`,
+    title:admin?'Admin sign-in':'Open your private order',
+    lead:`Use the secure one-time link below. It expires in ${config.magicLinkTtlMinutes} minutes and can only be used once.`,
+    content:`<tr><td style="padding:10px 34px 20px"><div style="background:#f3efe6;border:1px solid #e4dccf;border-radius:18px;padding:18px 20px;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#536159">For your privacy, this link opens only the private HairLook AI account/order connected to the email address that requested it. If this wasn't you, no action is needed.</div></td></tr>`,
+    ctaLabel:admin?'Sign in to admin':'Open my private order',
+    ctaUrl:url
+  });
   const result=await sendMailSafe({to,subject,text,html,reason:'magic_link'});
   return result.skipped?{devUrl:url}:{};
 }
 
 export async function sendVerificationCode({to,code}){
-  const subject=`Your ${config.productName} verification code`;
+  const subject=`${code} — your ${config.productName} verification code`;
   const text=`Your ${config.productName} verification code is ${code}. It expires in ${config.emailVerificationTtlMinutes} minutes. If you did not request this, you can ignore this email.`;
-  const html=`<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#17231d"><div style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#5d6b64;margin-bottom:14px">${config.productName}</div><h2 style="font-family:Georgia,serif;font-size:30px;font-weight:500;margin:0 0 12px">Confirm your email</h2><p style="font-size:16px;line-height:1.55">Enter this code to confirm your email address:</p><div style="font-size:36px;font-weight:700;letter-spacing:8px;margin:24px 0;padding:18px 22px;border-radius:14px;background:#f5f1e9;color:#173d32;text-align:center">${code}</div><p style="font-size:13px;color:#68716b;line-height:1.5">This code expires in ${config.emailVerificationTtlMinutes} minutes. If you did not request this, you can ignore this email.</p></div>`;
+  const html=emailShell({
+    preheader:`${code} is your ${config.productName} verification code`,
+    title:'Confirm your email',
+    lead:'Enter this 6-digit code on the HairLook AI verification screen to continue securely to your order.',
+    content:`<tr><td style="padding:12px 34px 32px"><div style="background:#18372d;border-radius:20px;padding:24px 20px;text-align:center"><div style="font-family:Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#cbd9d1;margin-bottom:10px">Verification code</div><div style="font-family:Arial,sans-serif;font-size:38px;font-weight:800;letter-spacing:9px;color:#ffffff">${escapeHtml(code)}</div></div><p style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;color:#7a837e;margin:14px 2px 0">This code expires in ${config.emailVerificationTtlMinutes} minutes. Never share it with support or anyone else.</p></td></tr>`
+  });
   const result=await sendMailSafe({to,subject,text,html,reason:'verification_code'});
   return result.skipped?{devCode:code}:{};
 }
@@ -81,8 +75,15 @@ export async function sendResultsReady({to}){
     log.info('results_email_skipped_manual_fulfillment',{to});
     return {skipped:true};
   }
-  const subject=`Your ${config.productName} collection is ready`;
-  const text=`Your personalized hairstyle collection is ready. Sign in at ${config.appUrl}/dashboard`;
-  const html=`<p>Your personalized hairstyle collection is ready.</p><p><a href="${config.appUrl}/dashboard">Open your private dashboard</a></p>`;
+  const subject=`Your ${config.productName} hairstyle collection is ready`;
+  const text=`Your personalized hairstyle collection is ready. Open your private account: ${config.appUrl}/dashboard`;
+  const html=emailShell({
+    preheader:'Your personalized hairstyle collection is ready',
+    title:'Your hairstyle results are ready',
+    lead:'Your private HairLook AI hairstyle collection is ready to view.',
+    content:'',
+    ctaLabel:'Open my private results',
+    ctaUrl:`${config.appUrl}/dashboard`
+  });
   return sendMailSafe({to,subject,text,html,reason:'results_ready'});
 }
