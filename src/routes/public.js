@@ -41,7 +41,8 @@ function clientConfig(settings = {}) {
   return {
     productName: config.productName,
     supportEmail: settings.support_email || config.supportEmail,
-    priceDisplayUsd: settings.price_display_usd || config.priceDisplayUsd,
+    supportPhone: config.supportPhone,
+    priceDisplayUsd: config.priceDisplayUsd,
     generationTargetCount: Number(settings.generation_target_count || config.generationTargetCount),
     checkoutEnabled: String(settings.checkout_enabled ?? config.checkoutEnabled) !== 'false',
     demoMode: config.demoMode,
@@ -158,14 +159,14 @@ router.post('/checkout', sameOrigin, leadSession, async (req,res,next) => { try 
   if (config.emailVerificationEnabled && !req.lead.email_verified_at) return res.status(403).json({ error:'email_verification_required' });
   if (req.lead.upload_status !== 'ready') return res.status(409).json({ error:'upload_not_ready' });
   if (req.lead.payment_status === 'paid') return res.json({ checkoutUrl:'/dashboard', alreadyPaid:true });
+  if (req.body?.acceptedPurchaseTerms !== true) return res.status(400).json({ error:'purchase_terms_required' });
   if (!config.demoMode && (!config.paddleClientToken || !config.paddlePriceId || !config.paddleWebhookSecret)) return res.status(503).json({ error:'checkout_not_configured' });
 
   await repo.updateLead(req.lead.id, { payment_status:'checkout_started', payment_provider:'paddle' });
+  await repo.insertAnalytics({ session_id:req.body?.sessionId || 'unknown', lead_id:req.lead.id, event_name:'purchase_terms_accepted', metadata:{ product:'personalized_hairstyle_collection', price:config.priceDisplayUsd, provider:'paddle' } });
   await repo.insertAnalytics({ session_id:req.body?.sessionId || 'unknown', lead_id:req.lead.id, event_name:'checkout_start', metadata:{ provider:'paddle' } });
   if (config.demoMode) return res.json({ demo:true, checkoutUrl:`/demo-checkout?lead=${encodeURIComponent(req.lead.id)}` });
 
-  // Paddle.js creates the transaction in checkout. The lead id is signed server-side;
-  // the verified webhook checks both this signature and the configured price before marking paid.
   res.json({
     clientToken: config.paddleClientToken,
     environment: config.paddleEnvironment,
@@ -177,8 +178,7 @@ router.post('/checkout', sameOrigin, leadSession, async (req,res,next) => { try 
 
 router.post('/demo/pay', sameOrigin, leadSession, async (req,res,next) => { try {
   if (!config.demoMode) return res.status(404).end();
-  const settings = await repo.getSettings();
-  const price = Number(settings.price_display_usd || config.priceDisplayUsd);
+  const price = Number(config.priceDisplayUsd);
   await repo.updateLead(req.lead.id, { payment_status:'paid', payment_order_id:`DEMO-${Date.now()}`, payment_amount:price, payment_currency:'USD', paid_at:new Date().toISOString(), generation_status:'manual_pending' });
   await repo.upsertPayment({ lead_id:req.lead.id, provider:'demo', provider_order_id:`DEMO-${req.lead.id}`, status:'paid', amount:price, currency:'USD', paid_at:new Date().toISOString(), raw_payload:{ demo:true } });
   await repo.insertAnalytics({ session_id:req.body?.sessionId || 'demo', lead_id:req.lead.id, event_name:'payment_success', metadata:{ provider:'demo' } });
