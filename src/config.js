@@ -15,6 +15,7 @@ export const config = Object.freeze({
 
   productName: process.env.PRODUCT_NAME || 'HairLook AI',
   supportEmail: process.env.SUPPORT_EMAIL || 'support@example.com',
+  supportPhone: process.env.SUPPORT_PHONE || '',
   legalBusinessName: process.env.LEGAL_BUSINESS_NAME || 'HairLook AI',
   legalBusinessAddress: process.env.LEGAL_BUSINESS_ADDRESS || '',
   priceDisplayUsd: process.env.PRICE_DISPLAY_USD || '6.99',
