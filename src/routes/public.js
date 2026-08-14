@@ -6,7 +6,7 @@ import { config } from '../config.js';
 import { repo } from '../lib/repository.js';
 import { putOriginal, signedResultUrl, deleteOriginal, deleteResult } from '../lib/storage.js';
 import { randomToken, tokenHash, hashIp, randomOtpCode, sha256, safeEqual } from '../lib/crypto.js';
-import { buildCheckoutUrl } from '../lib/paypro.js';
+import { createTransaction } from '../lib/paddle.js';
 import { sendMagicLink, sendVerificationCode } from '../lib/mailer.js';
 import { leadSession, optionalLeadSession, sameOrigin, noStore } from '../middleware.js';
 
@@ -56,7 +56,7 @@ router.post('/leads',sameOrigin,upload.single('photo'),async(req,res,next)=>{try
   const lead=await repo.createLead({
     email,gender:quiz.gender,age_range:quiz.ageRange,current_length:quiz.currentLength,desired_length:quiz.desiredLength,texture:quiz.texture,current_color:quiz.currentColor,
     desired_colors:quiz.desiredColors,style_goals:quiz.styleGoals,style_personality:quiz.stylePersonality,maintenance_level:quiz.maintenanceLevel,bangs_preference:quiz.bangsPreference,gray_preference:quiz.grayPreference,
-    quiz_answers:quiz,upload_status:'processing',payment_status:'unpaid',payment_provider:'paypro_global',generation_status:'not_started',source:utm.source||utm.utm_source||null,
+    quiz_answers:quiz,upload_status:'processing',payment_status:'unpaid',payment_provider:'paddle',generation_status:'not_started',source:utm.source||utm.utm_source||null,
     utm_source:utm.utm_source||null,utm_medium:utm.utm_medium||null,utm_campaign:utm.utm_campaign||null,utm_content:utm.utm_content||null,utm_term:utm.utm_term||null,landing_url:req.body.landingUrl||null,
     ip_hash:hashIp(req.ip),country:null,consent_at:new Date().toISOString()
   });
@@ -123,9 +123,10 @@ router.post('/checkout',sameOrigin,leadSession,async(req,res,next)=>{try{
   if(req.lead.upload_status!=='ready')return res.status(409).json({error:'upload_not_ready'});
   if(req.lead.payment_status==='paid')return res.json({checkoutUrl:'/dashboard',alreadyPaid:true});
   await repo.updateLead(req.lead.id,{payment_status:'checkout_started'});
-  await repo.insertAnalytics({session_id:req.body?.sessionId||'unknown',lead_id:req.lead.id,event_name:'checkout_start',metadata:{provider:'paypro_global'}});
-  if(config.demoMode)return res.json({checkoutUrl:`/demo-checkout?lead=${encodeURIComponent(req.lead.id)}`});
-  res.json({checkoutUrl:buildCheckoutUrl({leadId:req.lead.id,email:req.lead.email})});
+  await repo.insertAnalytics({session_id:req.body?.sessionId||'unknown',lead_id:req.lead.id,event_name:'checkout_start',metadata:{provider:'paddle'}});
+  if(config.demoMode)return res.json({demo:true,checkoutUrl:`/demo-checkout?lead=${encodeURIComponent(req.lead.id)}`});
+  const transaction=await createTransaction({leadId:req.lead.id,email:req.lead.email});
+  res.json({transactionId:transaction.id,clientToken:config.paddleClientToken,environment:config.paddleEnvironment});
 }catch(e){next(e);}});
 
 router.post('/demo/pay',sameOrigin,leadSession,async(req,res,next)=>{try{

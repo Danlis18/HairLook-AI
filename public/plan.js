@@ -18,8 +18,35 @@ async function animatePlan(){
   await wait(300);$('#analysisStage').style.display='none';$('#paywall').classList.add('is-visible');
   fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,eventName:'paywall_view',metadata:{price:cfg.priceDisplayUsd}})}).catch(()=>{});
 }
+let paddleReady=false;
+function initPaddle(clientToken,environment){
+  if(paddleReady||!window.Paddle)return;
+  if(environment==='sandbox')Paddle.Environment.set('sandbox');
+  Paddle.Initialize({token:clientToken,eventCallback:handlePaddleEvent});
+  paddleReady=true;
+}
+function handlePaddleEvent(event){
+  // The client is never trusted for payment status - this only drives UX. The dashboard
+  // re-checks the real, webhook-confirmed status and waits for it if it isn't there yet.
+  if(event?.name==='checkout.completed'){
+    fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,eventName:'checkout_completed_client',metadata:{}})}).catch(()=>{});
+    setTimeout(()=>{location.href='/dashboard';},1200);
+  }
+}
 $('#checkoutButton').addEventListener('click',async()=>{
   const btn=$('#checkoutButton');btn.disabled=true;btn.textContent='Opening secure checkout…';
-  try{const res=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId})});const data=await res.json();if(!res.ok)throw new Error(data.error||'checkout_failed');location.href=data.checkoutUrl;}catch(e){btn.disabled=false;btn.textContent='Continue to Secure Checkout →';$('#checkoutNote').textContent='Checkout could not be opened. Please try again or contact support.';}
+  try{
+    const res=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error||'checkout_failed');
+    if(data.alreadyPaid||data.demo){location.href=data.checkoutUrl;return;}
+    initPaddle(data.clientToken,data.environment);
+    if(!window.Paddle){throw new Error('paddle_not_loaded');}
+    Paddle.Checkout.open({transactionId:data.transactionId});
+    btn.disabled=false;btn.textContent='Continue to Secure Checkout →';
+  }catch(e){
+    btn.disabled=false;btn.textContent='Continue to Secure Checkout →';
+    $('#checkoutNote').textContent=e.message==='email_verification_required'?'Please verify your email before checkout.':'Checkout could not be opened. Please try again or contact support.';
+  }
 });
 init().catch(()=>location.href='/signin');

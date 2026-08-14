@@ -28,8 +28,10 @@ app.use(helmet({
       mediaSrc: ["'self'", 'blob:'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'"],
+      // Paddle.js (checkout overlay) needs its CDN script plus its API/iframe domains.
+      scriptSrc: ["'self'", 'https://cdn.paddle.com'],
+      connectSrc: ["'self'", 'https://*.paddle.com'],
+      frameSrc: ["'self'", 'https://*.paddle.com'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       frameAncestors: ["'none'"]
@@ -41,8 +43,10 @@ app.use(helmet({
 app.use(compression());
 app.use(cookieParser());
 
-// PayPro IPN commonly posts application/x-www-form-urlencoded.
-app.use('/api/webhooks', express.urlencoded({ extended: false, limit: '256kb' }), webhookRoutes);
+// Paddle webhook signature verification needs the exact raw bytes of the request body,
+// so this route gets express.raw() instead of the global express.json() below.
+app.use('/api/webhooks/paddle', express.raw({ type: 'application/json', limit: '256kb' }));
+app.use('/api/webhooks', webhookRoutes);
 app.use(express.json({ limit: '256kb' }));
 
 const apiLimiter = rateLimit({ windowMs: 60_000, limit: 180, standardHeaders: 'draft-8', legacyHeaders: false });

@@ -18,7 +18,7 @@ async function load(){
 function showPaymentGate(status){
  clearTimeout(pollTimer);$('#dashboardContent').hidden=true;const gate=$('#paymentGate');gate.hidden=false;
  const waiting=['checkout_started','waiting'].includes(status);
- gate.innerHTML=`<div class="auth-card" style="margin:50px auto"><div class="logo"><span class="logo-mark"></span><span class="logo-name">HairLook AI</span></div><h1>${waiting?'Verifying your payment…':'Your order is not paid yet.'}</h1><p>${waiting?'PayPro Global is confirming the payment with our server. This page will recheck automatically.':'Complete the one-time secure checkout to place your personalized hairstyle order.'}</p><a class="btn btn-primary btn-wide" href="/personal-plan">${waiting?'Back to purchase page':'Continue to checkout'}</a></div>`;
+ gate.innerHTML=`<div class="auth-card" style="margin:50px auto"><div class="logo"><span class="logo-mark"></span><span class="logo-name">HairLook AI</span></div><h1>${waiting?'Verifying your payment…':'Your order is not paid yet.'}</h1><p>${waiting?'Your secure checkout is being confirmed with our server. This page will recheck automatically.':'Complete the one-time secure checkout to place your personalized hairstyle order.'}</p><a class="btn btn-primary btn-wide" href="/personal-plan">${waiting?'Back to purchase page':'Continue to checkout'}</a></div>`;
  if(waiting)pollTimer=setTimeout(load,3000);
 }
 function render(data){

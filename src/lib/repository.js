@@ -141,6 +141,11 @@ export const repo = {
     const {data,error}=await getSupabase().from('payments').upsert({...payment,updated_at:now()},{onConflict:'provider,provider_order_id'}).select('*').single();if(error)throw error;return data;
   },
 
+  async getPaymentByOrderId(provider, orderId) {
+    if(config.demoMode){const s=loadDemo();return normalizeRow(s.payments.find(x=>x.provider===provider&&x.provider_order_id===orderId));}
+    const {data,error}=await getSupabase().from('payments').select('*').eq('provider',provider).eq('provider_order_id',orderId).maybeSingle();if(error)throw error;return data;
+  },
+
   async enqueueJobsIfEmpty(leadId, jobs) {
     if(config.demoMode){const s=loadDemo();if(s.generation_jobs.some(x=>x.lead_id===leadId))return false;for(const j of jobs)s.generation_jobs.push({id:randomUUID(),lead_id:leadId,status:'queued',attempts:0,created_at:now(),updated_at:now(),...j});saveDemo(s);return true;}
     const {count,error:e1}=await getSupabase().from('generation_jobs').select('id',{count:'exact',head:true}).eq('lead_id',leadId); if(e1)throw e1;

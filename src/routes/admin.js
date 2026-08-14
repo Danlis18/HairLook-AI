@@ -289,7 +289,7 @@ function csvUtm(row) {
 
 router.get('/export/customers.csv', adminSession, async (req, res, next) => {
   try {
-    const header = ['Email','Age','Gender','Quiz','Payment','Amount','PayPro Order ID','Fulfillment Status','Date','UTM'];
+    const header = ['Email','Age','Gender','Quiz','Payment','Amount','Order ID','Fulfillment Status','Date','UTM'];
     const lines = [header.join(',')];
     let offset=0;
     let exported=0;
