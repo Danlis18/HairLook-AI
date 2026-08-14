@@ -50,6 +50,7 @@ const authLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 12, standardHeader
 app.use('/api', apiLimiter);
 app.use('/api/auth', authLimiter);
 app.use('/api/admin/auth', authLimiter);
+app.use('/api/verify-email', authLimiter);
 
 app.get('/health', (req, res) => res.json({ ok: true, service: 'hairlook-ai', demoMode: config.demoMode, timestamp: new Date().toISOString() }));
 app.use('/api', publicRoutes);

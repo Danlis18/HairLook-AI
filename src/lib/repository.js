@@ -8,7 +8,7 @@ const DEMO_DB = path.resolve('data/demo-db.json');
 const now = () => new Date().toISOString();
 const defaultState = () => ({
   hair_leads: [], lead_sessions: [], admin_sessions: [], magic_links: [], payments: [], payment_events: [],
-  generation_jobs: [], generation_results: [], analytics_events: [], admin_audit_logs: [],
+  generation_jobs: [], generation_results: [], analytics_events: [], admin_audit_logs: [], email_verification_challenges: [],
   site_settings: [
     { key:'price_display_usd', value: config.priceDisplayUsd, type:'string', updated_at:now() },
     { key:'generation_target_count', value:String(config.generationTargetCount), type:'number', updated_at:now() },
@@ -102,6 +102,25 @@ export const repo = {
   async consumeMagicLink(tokenHash) {
     if(config.demoMode){const s=loadDemo();const i=s.magic_links.findIndex(x=>x.token_hash===tokenHash&&!x.used_at&&x.expires_at>now());if(i<0)return null;s.magic_links[i].used_at=now();const r=normalizeRow(s.magic_links[i]);saveDemo(s);return r;}
     const {data,error}=await getSupabase().rpc('consume_magic_link',{p_token_hash:tokenHash});if(error)throw error;return Array.isArray(data)?data[0]||null:data;
+  },
+
+  async createEmailChallenge({ leadId, email, codeHash, expiresAt, maxAttempts }) {
+    const row = { id: randomUUID(), lead_id: leadId, email: email.toLowerCase(), code_hash: codeHash, attempts: 0, max_attempts: maxAttempts, expires_at: expiresAt, used_at: null, created_at: now() };
+    if (config.demoMode) { const s = loadDemo(); s.email_verification_challenges = s.email_verification_challenges || []; s.email_verification_challenges.push(row); saveDemo(s); return row; }
+    const { data, error } = await getSupabase().from('email_verification_challenges').insert({ lead_id: leadId, email: row.email, code_hash: codeHash, max_attempts: maxAttempts, expires_at: expiresAt }).select('*').single();
+    if (error) throw error; return data;
+  },
+
+  async getLatestEmailChallenge(leadId) {
+    if (config.demoMode) { const s = loadDemo(); const rows = (s.email_verification_challenges || []).filter(x => x.lead_id === leadId).sort((a, b) => b.created_at.localeCompare(a.created_at)); return rows[0] ? normalizeRow(rows[0]) : null; }
+    const { data, error } = await getSupabase().from('email_verification_challenges').select('*').eq('lead_id', leadId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error; return data;
+  },
+
+  async touchEmailChallenge(id, patch) {
+    if (config.demoMode) { const s = loadDemo(); s.email_verification_challenges = s.email_verification_challenges || []; const row = s.email_verification_challenges.find(x => x.id === id); if (row) Object.assign(row, patch); saveDemo(s); return row ? normalizeRow(row) : null; }
+    const { data, error } = await getSupabase().from('email_verification_challenges').update(patch).eq('id', id).select('*').maybeSingle();
+    if (error) throw error; return data;
   },
 
   async insertAnalytics(event) {
@@ -245,7 +264,7 @@ export const repo = {
   },
 
   async deleteLead(id) {
-    if(config.demoMode){const s=loadDemo();for(const k of ['hair_leads','lead_sessions','payments','generation_jobs','generation_results'])s[k]=s[k].filter(x=>(x.lead_id||x.id)!==id);s.magic_links=s.magic_links.filter(x=>x.lead_id!==id);saveDemo(s);return;}
+    if(config.demoMode){const s=loadDemo();for(const k of ['hair_leads','lead_sessions','payments','generation_jobs','generation_results','email_verification_challenges'])s[k]=(s[k]||[]).filter(x=>(x.lead_id||x.id)!==id);s.magic_links=s.magic_links.filter(x=>x.lead_id!==id);saveDemo(s);return;}
     const {error}=await getSupabase().from('hair_leads').delete().eq('id',id);if(error)throw error;
   },
 

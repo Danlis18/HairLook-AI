@@ -51,6 +51,11 @@ export const config = Object.freeze({
   adminPassword: process.env.ADMIN_PASSWORD || '',
   manualFulfillmentMode: bool(process.env.MANUAL_FULFILLMENT_MODE, true),
   magicLinkTtlMinutes: integer(process.env.MAGIC_LINK_TTL_MINUTES, 20),
+
+  emailVerificationEnabled: bool(process.env.EMAIL_VERIFICATION_ENABLED, true),
+  emailVerificationTtlMinutes: integer(process.env.EMAIL_VERIFICATION_TTL_MINUTES, 10),
+  emailVerificationResendSeconds: integer(process.env.EMAIL_VERIFICATION_RESEND_SECONDS, 60),
+  emailVerificationMaxAttempts: integer(process.env.EMAIL_VERIFICATION_MAX_ATTEMPTS, 5),
   sessionTtlDays: integer(process.env.SESSION_TTL_DAYS, 30),
   adminSessionTtlHours: integer(process.env.ADMIN_SESSION_TTL_HOURS, 12),
 
@@ -86,6 +91,9 @@ export function assertProductionConfig() {
     ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
   ];
   if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
+  // Customer email OTP verification sends a real code by email; without SMTP it cannot
+  // work, so fail loudly at boot instead of silently letting customers get stuck.
+  if (config.emailVerificationEnabled) required.push(['SMTP_HOST (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpHost], ['EMAIL_FROM', process.env.EMAIL_FROM]);
   const missing = required.filter(([,v]) => !v).map(([k]) => k);
   if (missing.length) throw new Error(`Missing required production variables: ${missing.join(', ')}`);
 }

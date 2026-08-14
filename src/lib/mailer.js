@@ -16,6 +16,15 @@ export async function sendMagicLink({to,url,admin=false}){
   if(!t){log.info('email_skipped_smtp_not_configured',{to,admin,reason:'magic_link'});return {devUrl:url};}
   await t.sendMail({from:config.emailFrom,to,subject,text,html});return {};
 }
+export async function sendVerificationCode({to,code}){
+  const t=getTransporter();
+  if(!t){log.info('email_skipped_smtp_not_configured',{to,reason:'verification_code'});return {devCode:code};}
+  const subject=`Your ${config.productName} verification code`;
+  const text=`Your ${config.productName} verification code is ${code}. It expires in ${config.emailVerificationTtlMinutes} minutes. If you did not request this, you can ignore this email.`;
+  const html=`<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#17231d"><h2 style="font-family:Georgia,serif">Confirm your email</h2><p>Enter this code to confirm your email address:</p><p style="font-size:34px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p><p style="font-size:13px;color:#68716b">This code expires in ${config.emailVerificationTtlMinutes} minutes. If you did not request this, you can ignore this email.</p></div>`;
+  await t.sendMail({from:config.emailFrom,to,subject,text,html});
+  return {};
+}
 export async function sendResultsReady({to}){
   const t=getTransporter();if(!t){log.info('email_skipped_smtp_not_configured',{to,reason:'results_ready'});return;}
   await t.sendMail({from:config.emailFrom,to,subject:`Your ${config.productName} collection is ready`,text:`Your personalized hairstyle collection is ready. Sign in at ${config.appUrl}/dashboard`,html:`<p>Your personalized hairstyle collection is ready.</p><p><a href="${config.appUrl}/dashboard">Open your private dashboard</a></p>`});

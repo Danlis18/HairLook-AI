@@ -77,7 +77,7 @@ demoVideo?.addEventListener('pause', () => videoPlay?.classList.remove('is-hidde
 demoVideo?.addEventListener('play', () => videoPlay?.classList.add('is-hidden'));
 
 const questions = [
-  { key:'gender', title:'Who are we creating this look for?', help:'This helps us phrase your consultation naturally. It never changes the price.', options:[['Woman','Woman','woman'],['Man','Man','man'],['Another option','Another option','neutral']] },
+  { key:'gender', title:'Who are we creating this look for?', help:'This helps us phrase your consultation naturally. It never changes the price.', options:[['Woman','Woman','woman'],['Man','Man','man'],['Prefer not to say','Prefer not to say','neutral']] },
   { key:'ageRange', title:'What is your age range?', help:'We use this only as style context — never for pricing or eligibility.', options:[['Under 35','Under 35','<35'],['35–44','35–44','35'],['45–54','45–54','45'],['55–64','55–64','55'],['65+','65+','65+']] },
   { key:'currentLength', title:'How long is your hair right now?', help:'Choose the closest match. It gives the edit a more believable starting point.', options:[['Very short','Very short','1'],['Short','Short','2'],['Medium','Medium','3'],['Long','Long','4'],['Very long','Very long','5']] },
   { key:'desiredLength', title:'What length would you love to explore?', help:'There is no commitment — you are choosing directions to preview.', options:[['Shorter','Shorter','↘'],['About the same','About the same','≈'],['Longer','Longer','↗'],['Not sure','Not sure — show me what suits me','?']] },
@@ -116,9 +116,16 @@ function updateProgress() {
     progressLabel.textContent = `Step ${step + 1} of ${questions.length}`; progressPercent.textContent = `${pct}%`; progressBar.style.width = `${pct}%`;
   } else { progressLabel.textContent = 'Style profile complete'; progressPercent.textContent = '100%'; progressBar.style.width = '100%'; }
 }
-function goToStep(renderFn) {
-  flowContent.classList.add('is-leaving');
-  setTimeout(() => { renderFn(); flowContent.classList.remove('is-leaving'); }, 140);
+function goToStep(renderFn, direction='forward') {
+  const leaveClass = direction==='back' ? 'leaving-back' : 'leaving-fwd';
+  const enterClass = direction==='back' ? 'entering-back' : 'entering-fwd';
+  flowContent.classList.add(leaveClass);
+  setTimeout(() => {
+    renderFn();
+    flowContent.classList.remove(leaveClass);
+    flowContent.classList.add(enterClass);
+    requestAnimationFrame(() => requestAnimationFrame(() => flowContent.classList.remove(enterClass)));
+  }, 150);
 }
 function openFlow() {
   flow.classList.add('is-open'); flow.setAttribute('aria-hidden','false'); document.body.classList.add('flow-open');
@@ -133,6 +140,7 @@ function optionCard(q, opt) {
   const [value,label,visual] = opt; const is = selected(q,value);
   if (q.visual) return `<button type="button" class="choice-card visual-choice ${is?'is-selected':''}" data-value="${esc(value)}"><span class="visual-img"><img src="${esc(visual)}" alt="" loading="lazy"></span><span class="visual-body"><strong>${esc(value)}</strong><small>${esc(label)}</small></span></button>`;
   if (q.key==='gender') return `<button type="button" class="choice-card gender-choice ${is?'is-selected':''}" data-value="${esc(value)}"><span class="choice-icon">${genderIcons[visual]||''}</span><strong>${esc(label)}</strong></button>`;
+  if (q.key==='ageRange') return `<button type="button" class="choice-card age-choice ${is?'is-selected':''}" data-value="${esc(value)}"><span class="choice-icon">${esc(visual)}</span><strong>${esc(label)}</strong></button>`;
   return `<button type="button" class="choice-card ${is?'is-selected':''}" data-value="${esc(value)}"><span class="choice-icon">${esc(visual)}</span><strong>${esc(label)}</strong></button>`;
 }
 function renderSwatches(q) {
@@ -170,12 +178,13 @@ function advance() {
   else { track('quiz_complete'); goToStep(showProfileComplete); }
 }
 function goBack(){
-  if(phase==='confirmEmail'){ goToStep(showEmail); return; }
-  if(phase==='email'){ goToStep(showUpload); return; }
-  if(phase==='upload'){ phase='quiz'; step=questions.length-1; goToStep(renderQuiz); return; }
-  if(step>0){ step--; saveQuiz(); goToStep(renderQuiz); }
+  if(phase==='otp'){ goToStep(showEmail,'back'); return; }
+  if(phase==='confirmEmail'){ goToStep(showEmail,'back'); return; }
+  if(phase==='email'){ goToStep(showUpload,'back'); return; }
+  if(phase==='upload'){ phase='quiz'; step=questions.length-1; goToStep(renderQuiz,'back'); return; }
+  if(step>0){ step--; saveQuiz(); goToStep(renderQuiz,'back'); }
 }
-nextBtn?.addEventListener('click',()=>{ if(phase==='quiz')advance(); else if(phase==='upload')goToStep(showEmail); else if(phase==='email')proceedFromEmail(); });
+nextBtn?.addEventListener('click',()=>{ if(phase==='quiz')advance(); else if(phase==='upload')goToStep(showEmail); else if(phase==='email'){ leadCreated?changeEmail():proceedFromEmail(); } });
 backBtn?.addEventListener('click',goBack);
 
 function showProfileComplete(){
@@ -212,6 +221,10 @@ async function handlePhoto(file){
 function setPreview(file){const img=$('#photoPreview',flowContent); if(!img)return; const url=URL.createObjectURL(file); img.onload=()=>URL.revokeObjectURL(url); img.src=url;}
 
 let leadEmail = '';
+let leadCreated = false;
+let pendingNext = '/personal-plan';
+let otpDevCode = '';
+let resendCooldownUntil = 0;
 const typoMap = { 'gmail.con':'gmail.com','gmail.co':'gmail.com','gmial.com':'gmail.com','gmal.com':'gmail.com','gnail.com':'gmail.com','yaho.com':'yahoo.com','yahou.com':'yahoo.com','hotmial.com':'hotmail.com','hotmai.com':'hotmail.com','outlok.com':'outlook.com','outloo.com':'outlook.com' };
 function typoHint(value){
   const v=String(value||'').trim().toLowerCase();
@@ -220,8 +233,9 @@ function typoHint(value){
   return typoMap[domain]?`Did you mean ${v.slice(0,at+1)}${typoMap[domain]}?`:'';
 }
 function showEmail(){
-  if(!photoFile)return; phase='email'; updateProgress(); flowFooter.style.display='flex'; backBtn.style.visibility='visible'; nextBtn.hidden=false; nextBtn.textContent='Continue →'; nextBtn.disabled=false;
-  flowContent.innerHTML=`<section class="email-card quiz-stage"><div class="eyebrow" style="justify-content:center;display:flex">Private delivery</div><h2>Where should we send your results?</h2><p>We use your email for secure access to this hairstyle collection and order-related messages.</p><label class="field-label" for="leadEmail">Email address</label><input class="text-input" id="leadEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" maxlength="254" value="${esc(leadEmail)}"><div class="typo-hint" id="typoHint"></div><label class="consent"><input id="consent" type="checkbox" ${leadEmail?'checked':''}><span>I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a>. I understand my photo will be privately processed and temporarily stored to create hairstyle results.</span></label><div class="form-error" id="emailError" role="alert"></div></section>`;
+  if(!photoFile && !leadCreated)return;
+  phase='email'; updateProgress(); flowFooter.style.display='flex'; backBtn.style.visibility='visible'; nextBtn.hidden=false; nextBtn.textContent=leadCreated?'Send new code →':'Continue →'; nextBtn.disabled=false;
+  flowContent.innerHTML=`<section class="email-card quiz-stage"><div class="eyebrow" style="justify-content:center;display:flex">Private delivery</div><h2>${leadCreated?'Update your email':'Where should we send your results?'}</h2><p>${leadCreated?'We will send a new verification code to this address.':'We use your email for secure access to this hairstyle collection and order-related messages.'}</p><label class="field-label" for="leadEmail">Email address</label><input class="text-input" id="leadEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" maxlength="254" value="${esc(leadEmail)}"><div class="typo-hint" id="typoHint"></div>${leadCreated?'':`<label class="consent"><input id="consent" type="checkbox" ${leadEmail?'checked':''}><span>I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a>. I understand my photo will be privately processed and temporarily stored to create hairstyle results.</span></label>`}<div class="form-error" id="emailError" role="alert"></div></section>`;
   const input=$('#leadEmail',flowContent);
   input.addEventListener('input',()=>{ $('#typoHint',flowContent).textContent=typoHint(input.value); });
   track('email_step_view');
@@ -231,6 +245,17 @@ function proceedFromEmail(){
   if(!/^\S+@\S+\.\S+$/.test(email||'')){error.textContent='Please enter a valid email address.';return;}
   if(!consent){error.textContent='Please review and accept the Terms and Privacy Policy to continue.';return;}
   leadEmail=email; error.textContent=''; goToStep(showEmailConfirm);
+}
+async function changeEmail(){
+  const btn=nextBtn; const email=$('#leadEmail',flowContent)?.value.trim().toLowerCase(); const error=$('#emailError',flowContent);
+  if(!/^\S+@\S+\.\S+$/.test(email||'')){error.textContent='Please enter a valid email address.';return;}
+  error.textContent=''; btn.disabled=true;
+  try{
+    const res=await fetch('/api/verify-email/change',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const body=await res.json().catch(()=>({}));
+    if(!res.ok){error.textContent='Could not update that email. Please try again.';btn.disabled=false;return;}
+    leadEmail=email; otpDevCode=body.devCode||''; goToStep(showOtpVerification);
+  }catch{ error.textContent='Could not reach the server.'; btn.disabled=false; }
 }
 function showEmailConfirm(){
   phase='confirmEmail'; updateProgress(); flowFooter.style.display='none';
@@ -248,12 +273,67 @@ async function submitLead(){
   try{
     const res=await fetch('/api/leads',{method:'POST',body:data}); const body=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(body.error||'upload_failed');
-    sessionStorage.setItem('hairlook_lead_id',body.leadId); track('email_submit',{leadCreated:true}); location.href=body.next||'/personal-plan';
+    sessionStorage.setItem('hairlook_lead_id',body.leadId); track('email_submit',{leadCreated:true});
+    leadCreated=true; pendingNext=body.next||'/personal-plan';
+    if(body.emailVerificationRequired){ otpDevCode=body.devCode||''; goToStep(showOtpVerification); }
+    else location.href=pendingNext;
   }catch(e){
     if(confirmBtn){confirmBtn.disabled=false;confirmBtn.textContent='Confirm email →';}
     if(editBtn)editBtn.disabled=false;
     if(error)error.textContent=e.message==='image_too_small'?'Please choose a larger image.':e.message==='unsupported_image'?'That image format is not supported by this server.':'We could not securely upload that photo. Please try another image.';
   }
+}
+
+function showOtpVerification(){
+  phase='otp'; updateProgress(); flowFooter.style.display='none';
+  flowContent.innerHTML=`<section class="email-card otp-card quiz-stage"><div class="eyebrow" style="justify-content:center;display:flex">Check your email</div><h2>Enter your verification code</h2><p>We sent a 6-digit code to <strong>${esc(leadEmail)}</strong>.</p><input class="text-input otp-input" id="otpCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000">${otpDevCode?`<div class="typo-hint">Demo code: ${esc(otpDevCode)}</div>`:''}<div class="form-error" id="otpError" role="alert"></div><button type="button" class="btn btn-primary btn-wide" id="verifyOtpBtn">Verify →</button><div class="otp-actions"><button type="button" class="link-btn" id="resendOtpBtn">Resend code</button><button type="button" class="link-btn" id="changeEmailOtpBtn">Change email</button></div></section>`;
+  const input=$('#otpCode',flowContent);
+  input.addEventListener('input',()=>{ input.value=input.value.replace(/\D/g,'').slice(0,6); });
+  input.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); verifyOtp(); } });
+  input.focus();
+  $('#verifyOtpBtn',flowContent).addEventListener('click',verifyOtp);
+  $('#resendOtpBtn',flowContent).addEventListener('click',resendOtp);
+  $('#changeEmailOtpBtn',flowContent).addEventListener('click',()=>goToStep(showEmail,'back'));
+  track('otp_view');
+}
+async function verifyOtp(){
+  const input=$('#otpCode',flowContent), btn=$('#verifyOtpBtn',flowContent), error=$('#otpError',flowContent);
+  const code=input.value.trim();
+  error.textContent='';
+  if(!/^\d{6}$/.test(code)){error.textContent='Enter the 6-digit code from your email.';return;}
+  btn.disabled=true; btn.textContent='Verifying…';
+  try{
+    const res=await fetch('/api/verify-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    const body=await res.json().catch(()=>({}));
+    if(!res.ok){
+      error.textContent=body.error==='max_attempts_exceeded'?'Too many attempts. Please request a new code.':'That code is incorrect or has expired.';
+      btn.disabled=false; btn.textContent='Verify →';
+      return;
+    }
+    track('email_verified');
+    location.href=pendingNext;
+  }catch{
+    error.textContent='Could not reach the server. Please try again.';
+    btn.disabled=false; btn.textContent='Verify →';
+  }
+}
+async function resendOtp(){
+  const btn=$('#resendOtpBtn',flowContent), error=$('#otpError',flowContent);
+  if(Date.now()<resendCooldownUntil)return;
+  btn.disabled=true;
+  try{
+    const res=await fetch('/api/verify-email/resend',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const body=await res.json().catch(()=>({}));
+    if(!res.ok){
+      if(body.error==='resend_cooldown'){error.textContent=`Please wait ${body.retryAfterSeconds||60}s before requesting another code.`;resendCooldownUntil=Date.now()+(body.retryAfterSeconds||60)*1000;}
+      else error.textContent='Could not resend the code right now.';
+    } else {
+      otpDevCode=body.devCode||''; resendCooldownUntil=Date.now()+60_000;
+      showOtpVerification();
+      $('#otpError',flowContent).textContent='A new code has been sent.';
+    }
+  }catch{ error.textContent='Could not reach the server.'; }
+  finally{ setTimeout(()=>{ const b=$('#resendOtpBtn',flowContent); if(b)b.disabled=false; },1000); }
 }
 
 const tipsModal=$('#photoTipsModal');

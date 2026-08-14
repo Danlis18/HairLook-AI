@@ -5,9 +5,9 @@ import { z } from 'zod';
 import { config } from '../config.js';
 import { repo } from '../lib/repository.js';
 import { putOriginal, signedResultUrl, deleteOriginal, deleteResult } from '../lib/storage.js';
-import { randomToken, tokenHash, hashIp } from '../lib/crypto.js';
+import { randomToken, tokenHash, hashIp, randomOtpCode, sha256, safeEqual } from '../lib/crypto.js';
 import { buildCheckoutUrl } from '../lib/paypro.js';
-import { sendMagicLink } from '../lib/mailer.js';
+import { sendMagicLink, sendVerificationCode } from '../lib/mailer.js';
 import { leadSession, optionalLeadSession, sameOrigin, noStore } from '../middleware.js';
 
 const router=Router();
@@ -27,6 +27,13 @@ function parseJsonField(value, fallback={}) {
 
 function cookieOptions(days=config.sessionTtlDays){return {httpOnly:true,secure:config.isProduction,sameSite:'lax',maxAge:days*86400_000,path:'/'};}
 async function createLeadSession(res,leadId){const raw=randomToken();const expires=new Date(Date.now()+config.sessionTtlDays*86400_000).toISOString();await repo.createLeadSession(leadId,tokenHash(raw),expires);res.cookie('hair_lead_session',raw,cookieOptions());}
+async function issueEmailChallenge(lead){
+  const code=randomOtpCode();
+  const expiresAt=new Date(Date.now()+config.emailVerificationTtlMinutes*60_000).toISOString();
+  await repo.createEmailChallenge({leadId:lead.id,email:lead.email,codeHash:sha256(code),expiresAt,maxAttempts:config.emailVerificationMaxAttempts});
+  const sent=await sendVerificationCode({to:lead.email,code});
+  return sent.devCode;
+}
 function clientConfig(settings={}){return {
   productName:config.productName,supportEmail:settings.support_email||config.supportEmail,priceDisplayUsd:settings.price_display_usd||config.priceDisplayUsd,
   generationTargetCount:Number(settings.generation_target_count||config.generationTargetCount),checkoutEnabled:String(settings.checkout_enabled??config.checkoutEnabled)!=='false',
@@ -57,13 +64,47 @@ router.post('/leads',sameOrigin,upload.single('photo'),async(req,res,next)=>{try
   try{const key=await putOriginal(lead.id,cleaned,'image/jpeg');await repo.updateLead(lead.id,{upload_path:key,upload_status:'ready'});}catch(e){await repo.updateLead(lead.id,{upload_status:'failed'});throw e;}
   await createLeadSession(res,lead.id);
   await repo.insertAnalytics({session_id:req.body.sessionId||'unknown',lead_id:lead.id,event_name:'upload_complete',metadata:{format:meta.format,width:meta.width,height:meta.height}});
-  res.status(201).json({leadId:lead.id,next:'/personal-plan'});
+  if(config.emailVerificationEnabled){
+    const devCode=await issueEmailChallenge(lead);
+    res.status(201).json({leadId:lead.id,next:'/personal-plan',emailVerificationRequired:true,...(config.demoMode?{devCode}:{})});
+  } else {
+    res.status(201).json({leadId:lead.id,next:'/personal-plan',emailVerificationRequired:false});
+  }
+}catch(e){next(e);}});
+
+router.post('/verify-email',sameOrigin,leadSession,async(req,res,next)=>{try{
+  if(!config.emailVerificationEnabled)return res.status(404).json({error:'not_found'});
+  if(req.lead.email_verified_at)return res.json({ok:true,alreadyVerified:true});
+  const code=z.string().trim().regex(/^\d{6}$/).parse(req.body.code);
+  const challenge=await repo.getLatestEmailChallenge(req.lead.id);
+  const generic={error:'invalid_or_expired_code'};
+  if(!challenge||challenge.used_at)return res.status(400).json(generic);
+  if(new Date(challenge.expires_at).getTime()<=Date.now())return res.status(400).json(generic);
+  if(challenge.attempts>=challenge.max_attempts)return res.status(429).json({error:'max_attempts_exceeded'});
+  const match=safeEqual(sha256(code),challenge.code_hash);
+  if(!match){await repo.touchEmailChallenge(challenge.id,{attempts:challenge.attempts+1});return res.status(400).json(generic);}
+  await repo.touchEmailChallenge(challenge.id,{used_at:new Date().toISOString()});
+  await repo.updateLead(req.lead.id,{email_verified_at:new Date().toISOString()});
+  res.json({ok:true});
+}catch(e){next(e);}});
+
+router.post('/verify-email/resend',sameOrigin,leadSession,async(req,res,next)=>{try{
+  if(!config.emailVerificationEnabled)return res.status(404).json({error:'not_found'});
+  if(req.lead.email_verified_at)return res.json({ok:true,alreadyVerified:true});
+  const last=await repo.getLatestEmailChallenge(req.lead.id);
+  if(last){
+    const elapsedSeconds=(Date.now()-new Date(last.created_at).getTime())/1000;
+    if(elapsedSeconds<config.emailVerificationResendSeconds)return res.status(429).json({error:'resend_cooldown',retryAfterSeconds:Math.ceil(config.emailVerificationResendSeconds-elapsedSeconds)});
+  }
+  const devCode=await issueEmailChallenge(req.lead);
+  res.json({ok:true,...(config.demoMode?{devCode}:{})});
 }catch(e){next(e);}});
 
 router.get('/me',noStore,optionalLeadSession,async(req,res,next)=>{try{if(!req.lead)return res.json({authenticated:false});const count=await repo.countResults(req.lead.id);res.json({authenticated:true,lead:{id:req.lead.id,email:req.lead.email,paymentStatus:req.lead.payment_status,generationStatus:req.lead.generation_status,resultCount:count}});}catch(e){next(e);}});
 
 router.post('/checkout',sameOrigin,leadSession,async(req,res,next)=>{try{
   const settings=await repo.getSettings();if(String(settings.checkout_enabled??config.checkoutEnabled)==='false')return res.status(503).json({error:'checkout_disabled'});
+  if(config.emailVerificationEnabled && !req.lead.email_verified_at)return res.status(403).json({error:'email_verification_required'});
   if(req.lead.upload_status!=='ready')return res.status(409).json({error:'upload_not_ready'});
   if(req.lead.payment_status==='paid')return res.json({checkoutUrl:'/dashboard',alreadyPaid:true});
   await repo.updateLead(req.lead.id,{payment_status:'checkout_started'});

@@ -13,3 +13,4 @@ export const safeEqual = (a, b) => {
 };
 export const hashIp = (ip) => sha256(`${config.ipHashSalt}:${ip || ''}`);
 export const eventFingerprint = (parts) => sha256(parts.map(v => v ?? '').join('|'));
+export const randomOtpCode = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
