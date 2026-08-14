@@ -26,6 +26,12 @@ export async function sendVerificationCode({to,code}){
   return {};
 }
 export async function sendResultsReady({to}){
-  const t=getTransporter();if(!t){log.info('email_skipped_smtp_not_configured',{to,reason:'results_ready'});return;}
+  if(config.manualFulfillmentMode){
+    log.info('results_email_skipped_manual_fulfillment',{to});
+    return {skipped:true};
+  }
+  const t=getTransporter();
+  if(!t){log.info('email_skipped_smtp_not_configured',{to,reason:'results_ready'});return {skipped:true};}
   await t.sendMail({from:config.emailFrom,to,subject:`Your ${config.productName} collection is ready`,text:`Your personalized hairstyle collection is ready. Sign in at ${config.appUrl}/dashboard`,html:`<p>Your personalized hairstyle collection is ready.</p><p><a href="${config.appUrl}/dashboard">Open your private dashboard</a></p>`});
+  return {sent:true};
 }
