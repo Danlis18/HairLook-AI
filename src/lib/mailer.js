@@ -1,42 +1,57 @@
-import nodemailer from 'nodemailer';
 import { config } from '../config.js';
 import { log } from './log.js';
 
-let transporter;
-
-function getTransporter(){
-  if(transporter)return transporter;
-  if(!config.smtpHost)return null;
-  transporter=nodemailer.createTransport({
-    host:config.smtpHost,
-    port:config.smtpPort,
-    secure:config.smtpSecure,
-    auth:config.smtpUser?{user:config.smtpUser,pass:config.smtpPass}:undefined,
-    connectionTimeout:10_000,
-    greetingTimeout:10_000,
-    socketTimeout:15_000
-  });
-  return transporter;
-}
+const RESEND_API_URL = 'https://api.resend.com/emails';
 
 async function sendMailSafe({to,subject,text,html,reason}){
-  const t=getTransporter();
-  if(!t){
-    log.info('email_skipped_smtp_not_configured',{to,reason});
+  if(!config.resendApiKey){
+    log.info('email_skipped_resend_not_configured',{to,reason});
     return {skipped:true};
   }
+
   try{
-    const info=await t.sendMail({from:config.emailFrom,to,subject,text,html});
-    log.info('email_sent',{to,reason,messageId:info?.messageId||null});
-    return {sent:true};
+    const response=await fetch(RESEND_API_URL,{
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${config.resendApiKey}`,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        from:config.emailFrom,
+        to:[to],
+        subject,
+        text,
+        html
+      }),
+      signal:AbortSignal.timeout(15_000)
+    });
+
+    const body=await response.json().catch(()=>({}));
+    if(!response.ok){
+      log.error('email_send_failed',{
+        to,
+        reason,
+        provider:'resend',
+        status:response.status,
+        providerError:body?.name||body?.error||null,
+        providerMessage:body?.message||null
+      });
+      const wrapped=new Error('email_send_failed');
+      wrapped.status=502;
+      wrapped.code='EMAIL_SEND_FAILED';
+      throw wrapped;
+    }
+
+    log.info('email_sent',{to,reason,provider:'resend',messageId:body?.id||null});
+    return {sent:true,id:body?.id||null};
   }catch(error){
+    if(error?.code==='EMAIL_SEND_FAILED')throw error;
     log.error('email_send_failed',{
       to,
       reason,
-      code:error?.code||null,
-      command:error?.command||null,
-      responseCode:error?.responseCode||null,
-      message:error?.message||'SMTP send failed'
+      provider:'resend',
+      code:error?.code||error?.name||null,
+      message:error?.message||'Resend API request failed'
     });
     const wrapped=new Error('email_send_failed');
     wrapped.status=502;
@@ -56,7 +71,7 @@ export async function sendMagicLink({to,url,admin=false}){
 export async function sendVerificationCode({to,code}){
   const subject=`Your ${config.productName} verification code`;
   const text=`Your ${config.productName} verification code is ${code}. It expires in ${config.emailVerificationTtlMinutes} minutes. If you did not request this, you can ignore this email.`;
-  const html=`<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#17231d"><h2 style="font-family:Georgia,serif">Confirm your email</h2><p>Enter this code to confirm your email address:</p><p style="font-size:34px;font-weight:700;letter-spacing:6px;margin:20px 0">${code}</p><p style="font-size:13px;color:#68716b">This code expires in ${config.emailVerificationTtlMinutes} minutes. If you did not request this, you can ignore this email.</p></div>`;
+  const html=`<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#17231d"><div style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#5d6b64;margin-bottom:14px">${config.productName}</div><h2 style="font-family:Georgia,serif;font-size:30px;font-weight:500;margin:0 0 12px">Confirm your email</h2><p style="font-size:16px;line-height:1.55">Enter this code to confirm your email address:</p><div style="font-size:36px;font-weight:700;letter-spacing:8px;margin:24px 0;padding:18px 22px;border-radius:14px;background:#f5f1e9;color:#173d32;text-align:center">${code}</div><p style="font-size:13px;color:#68716b;line-height:1.5">This code expires in ${config.emailVerificationTtlMinutes} minutes. If you did not request this, you can ignore this email.</p></div>`;
   const result=await sendMailSafe({to,subject,text,html,reason:'verification_code'});
   return result.skipped?{devCode:code}:{};
 }
