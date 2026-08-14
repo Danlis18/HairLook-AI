@@ -28,7 +28,6 @@ app.use(helmet({
       mediaSrc: ["'self'", 'blob:'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      // Paddle.js (checkout overlay) needs its CDN script plus its API/iframe domains.
       scriptSrc: ["'self'", 'https://cdn.paddle.com'],
       connectSrc: ["'self'", 'https://*.paddle.com'],
       frameSrc: ["'self'", 'https://*.paddle.com'],
@@ -43,8 +42,6 @@ app.use(helmet({
 app.use(compression());
 app.use(cookieParser());
 
-// Paddle webhook signature verification needs the exact raw bytes of the request body,
-// so this route gets express.raw() instead of the global express.json() below.
 app.use('/api/webhooks/paddle', express.raw({ type: 'application/json', limit: '256kb' }));
 app.use('/api/webhooks', webhookRoutes);
 app.use(express.json({ limit: '256kb' }));
@@ -82,8 +79,6 @@ if (config.demoMode) {
   });
 }
 
-// Revalidate HTML/JS/CSS on every request so a fresh Railway deployment cannot keep
-// serving an hour-old interface from the browser cache. Media files remain cacheable.
 app.use(express.static(path.join(root, 'public'), {
   etag: true,
   maxAge: '1d',
@@ -94,6 +89,7 @@ app.use(express.static(path.join(root, 'public'), {
 
 const page = name => (req, res) => res.sendFile(path.join(root, 'public', name));
 app.get('/', page('index.html'));
+app.get('/product', page('product.html'));
 app.get('/personal-plan', page('personal-plan.html'));
 app.get('/dashboard', page('dashboard.html'));
 app.get('/signin', page('signin.html'));
@@ -102,6 +98,8 @@ app.get('/admin', page('admin.html'));
 app.get('/privacy', page('privacy.html'));
 app.get('/terms', page('terms.html'));
 app.get('/refund', page('refund.html'));
+app.get('/license', page('license.html'));
+app.get('/cookies', page('cookies.html'));
 app.get('/contact', page('contact.html'));
 app.get('/about', page('about.html'));
 
