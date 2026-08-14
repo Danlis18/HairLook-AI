@@ -78,7 +78,15 @@ if (config.demoMode) {
   });
 }
 
-app.use(express.static(path.join(root, 'public'), { maxAge: config.isProduction ? '1h' : 0, etag: true }));
+// Revalidate HTML/JS/CSS on every request so a fresh Railway deployment cannot keep
+// serving an hour-old interface from the browser cache. Media files remain cacheable.
+app.use(express.static(path.join(root, 'public'), {
+  etag: true,
+  maxAge: '1d',
+  setHeaders(res, filePath) {
+    if (/\.(?:html|js|css)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
+  }
+}));
 
 const page = name => (req, res) => res.sendFile(path.join(root, 'public', name));
 app.get('/', page('index.html'));
