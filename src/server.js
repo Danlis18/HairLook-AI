@@ -28,7 +28,6 @@ app.use(helmet({
       mediaSrc: ["'self'", 'blob:'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      // Paddle.js (checkout overlay) needs its CDN script plus its API/iframe domains.
       scriptSrc: ["'self'", 'https://cdn.paddle.com'],
       connectSrc: ["'self'", 'https://*.paddle.com'],
       frameSrc: ["'self'", 'https://*.paddle.com'],
@@ -43,8 +42,6 @@ app.use(helmet({
 app.use(compression());
 app.use(cookieParser());
 
-// Paddle webhook signature verification needs the exact raw bytes of the request body,
-// so this route gets express.raw() instead of the global express.json() below.
 app.use('/api/webhooks/paddle', express.raw({ type: 'application/json', limit: '256kb' }));
 app.use('/api/webhooks', webhookRoutes);
 app.use(express.json({ limit: '256kb' }));
@@ -60,6 +57,16 @@ app.get('/health', (req, res) => res.json({ ok: true, service: 'hairlook-ai', de
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/admin', adminRoutes);
+
+app.get('/auth/magic', (req, res) => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(req.query || {})) {
+    if (Array.isArray(value)) value.forEach(v => params.append(key, String(v)));
+    else if (value != null) params.set(key, String(value));
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : '';
+  res.redirect(307, `/api/auth/magic${suffix}`);
+});
 
 if (config.demoMode) {
   const safeDemoFile = (dir, key) => {
@@ -82,8 +89,6 @@ if (config.demoMode) {
   });
 }
 
-// Revalidate HTML/JS/CSS on every request so a fresh Railway deployment cannot keep
-// serving an hour-old interface from the browser cache. Media files remain cacheable.
 app.use(express.static(path.join(root, 'public'), {
   etag: true,
   maxAge: '1d',
@@ -94,6 +99,8 @@ app.use(express.static(path.join(root, 'public'), {
 
 const page = name => (req, res) => res.sendFile(path.join(root, 'public', name));
 app.get('/', page('index.html'));
+app.get('/product', page('product.html'));
+app.get('/price', page('price.html'));
 app.get('/personal-plan', page('personal-plan.html'));
 app.get('/dashboard', page('dashboard.html'));
 app.get('/signin', page('signin.html'));
@@ -102,6 +109,8 @@ app.get('/admin', page('admin.html'));
 app.get('/privacy', page('privacy.html'));
 app.get('/terms', page('terms.html'));
 app.get('/refund', page('refund.html'));
+app.get('/license', page('license.html'));
+app.get('/cookies', page('cookies.html'));
 app.get('/contact', page('contact.html'));
 app.get('/about', page('about.html'));
 
@@ -116,5 +125,5 @@ app.use((error, req, res, next) => {
 
 const server = app.listen(config.port, () => log.info('server_started', { port: config.port, appUrl: config.appUrl, demoMode: config.demoMode }));
 const controller = new AbortController();
-if (config.demoMode) startWorker({ signal: controller.signal }).catch(error => log.error('demo_worker_crash', { error: error.message }));
+if (config.demoMode) startWorker({ signal: controller.signal }).catch(error => log.error('demo_worker_crash', { error:error.message }));
 for (const sig of ['SIGINT','SIGTERM']) process.on(sig, () => { controller.abort(); server.close(() => process.exit(0)); });

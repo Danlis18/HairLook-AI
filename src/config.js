@@ -13,11 +13,12 @@ export const config = Object.freeze({
   demoMode: bool(process.env.DEMO_MODE, false),
   trustProxy: integer(process.env.TRUST_PROXY, 1),
 
-  productName: process.env.PRODUCT_NAME || 'HairLook AI',
+  productName: process.env.PRODUCT_NAME || 'PremiumHairstyles AI',
   supportEmail: process.env.SUPPORT_EMAIL || 'support@example.com',
-  legalBusinessName: process.env.LEGAL_BUSINESS_NAME || 'HairLook AI',
+  supportPhone: process.env.SUPPORT_PHONE || '',
+  legalBusinessName: process.env.LEGAL_BUSINESS_NAME || 'PremiumHairstyles AI',
   legalBusinessAddress: process.env.LEGAL_BUSINESS_ADDRESS || '',
-  priceDisplayUsd: process.env.PRICE_DISPLAY_USD || '15.00',
+  priceDisplayUsd: process.env.PRICE_DISPLAY_USD || '6.99',
   generationTargetCount: integer(process.env.GENERATION_TARGET_COUNT, 30),
 
   supabaseUrl: process.env.SUPABASE_URL || '',
@@ -39,12 +40,8 @@ export const config = Object.freeze({
   workerConcurrency: integer(process.env.GENERATION_WORKER_CONCURRENCY, 2),
   workerPollMs: integer(process.env.GENERATION_POLL_INTERVAL_MS, 2500),
 
-  smtpHost: process.env.SMTP_HOST || '',
-  smtpPort: integer(process.env.SMTP_PORT, 587),
-  smtpSecure: bool(process.env.SMTP_SECURE, false),
-  smtpUser: process.env.SMTP_USER || '',
-  smtpPass: process.env.SMTP_PASS || '',
-  emailFrom: process.env.EMAIL_FROM || 'HairLook AI <results@example.com>',
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  emailFrom: process.env.EMAIL_FROM || 'PremiumHairstyles AI <results@example.com>',
 
   adminEmails: list(process.env.ADMIN_EMAILS),
   adminPassword: process.env.ADMIN_PASSWORD || '',
@@ -78,7 +75,6 @@ export function assertProductionConfig() {
     ['IP_HASH_SALT', process.env.IP_HASH_SALT],
     ['SUPABASE_URL', config.supabaseUrl],
     ['SUPABASE_SECRET_KEY', config.supabaseSecretKey],
-    ['PADDLE_API_KEY', config.paddleApiKey],
     ['PADDLE_CLIENT_TOKEN', config.paddleClientToken],
     ['PADDLE_PRICE_ID', config.paddlePriceId],
     ['PADDLE_WEBHOOK_SECRET', config.paddleWebhookSecret],
@@ -87,12 +83,12 @@ export function assertProductionConfig() {
     ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
     ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
   ];
+  if (config.paymentProvider !== 'paddle') required.push(['PAYMENT_PROVIDER must be paddle', config.paymentProvider === 'paddle' ? 'ok' : '']);
+  if (!['sandbox','production'].includes(config.paddleEnvironment)) required.push(['PADDLE_ENVIRONMENT must be sandbox or production', '']);
   if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
   if (config.emailVerificationEnabled) {
     required.push(
-      ['SMTP_HOST (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpHost],
-      ['SMTP_USER (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpUser],
-      ['SMTP_PASS (required because EMAIL_VERIFICATION_ENABLED=true)', config.smtpPass],
+      ['RESEND_API_KEY (required because EMAIL_VERIFICATION_ENABLED=true)', config.resendApiKey],
       ['EMAIL_FROM', process.env.EMAIL_FROM]
     );
   }
