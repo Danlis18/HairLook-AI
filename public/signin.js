@@ -7,7 +7,7 @@ const error=document.querySelector('#signinError');
 const sendAgain=document.querySelector('#sendAgainBtn');
 const params=new URLSearchParams(location.search);
 
-if(params.get('error')) error.textContent='That sign-in link is expired or has already been used. Request a new one below.';
+if(params.get('error')) error.textContent='Esse link de acesso expirou ou já foi usado. Solicite um novo abaixo.';
 
 function showRequest(){
   sent.hidden=true;
@@ -20,12 +20,12 @@ function showRequest(){
 function showSent(email,data){
   request.hidden=true;
   sent.hidden=false;
-  sentCopy.innerHTML=`We sent a secure one-time link to <strong>${escapeHtml(email)}</strong>. Open the message from <strong>HairLook AI</strong> and click <strong>Open my private order</strong>. The link signs you in automatically and can only be used once.`;
+  sentCopy.innerHTML=`Enviamos um link seguro e de uso único para <strong>${escapeHtml(email)}</strong>. Abra a mensagem da <strong>PremiumHairstyles AI</strong> e clique em <strong>Abrir meu pedido privado</strong>. O link faz seu login automaticamente e pode ser usado apenas uma vez.`;
   result.textContent='';
   if(data?.devMagicLink){
     const a=document.createElement('a');
     a.href=data.devMagicLink;
-    a.textContent='Open demo sign-in link';
+    a.textContent='Abrir link de acesso de demonstração';
     a.style.textDecoration='underline';
     result.appendChild(a);
   }
@@ -44,7 +44,7 @@ form.addEventListener('submit',async e=>{
   const btn=form.querySelector('button');
   const email=form.email.value.trim();
   btn.disabled=true;
-  btn.textContent='Sending…';
+  btn.textContent='Enviando…';
   try{
     const r=await fetch('/api/auth/request-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
     const data=await r.json();
@@ -52,9 +52,9 @@ form.addEventListener('submit',async e=>{
     showSent(email,data);
     form.reset();
   }catch{
-    error.textContent='Could not send the sign-in link. Please try again.';
+    error.textContent='Não foi possível enviar o link de acesso. Tente novamente.';
   }finally{
     btn.disabled=false;
-    btn.textContent='Send secure sign-in link →';
+    btn.textContent='Enviar link seguro de acesso →';
   }
 });
