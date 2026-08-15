@@ -7,6 +7,22 @@
   removeQuestion('maintenanceLevel');
   if (step >= questions.length) { step = 0; saveQuiz(); }
 
+  // The production API still accepts/stores the wider historical quiz shape.
+  // Keep defaults for fields intentionally removed from the lean UI so lead creation,
+  // photo upload and OTP delivery never fail validation.
+  const backendDefaults = {
+    currentColor: 'Not provided',
+    desiredColors: [],
+    stylePersonality: 'Not specified',
+    maintenanceLevel: 'Not specified',
+    bangsPreference: 'Not specified',
+    grayPreference: 'Not relevant'
+  };
+  Object.entries(backendDefaults).forEach(([key,value]) => {
+    if (answers[key] == null || answers[key] === '') answers[key] = Array.isArray(value) ? [...value] : value;
+  });
+  saveQuiz();
+
   // Replace numeric badges with simple visual symbols.
   const age = questions.find(q => q.key === 'ageRange');
   if (age) {
@@ -82,6 +98,9 @@
     const isMan=String(answers.gender||'').toLowerCase()==='man';
     const catalog=isMan?men:women;
     answers.recommendedStyles=catalog.map(x=>x[0]);
+    Object.entries(backendDefaults).forEach(([key,value]) => {
+      if (answers[key] == null || answers[key] === '') answers[key] = Array.isArray(value) ? [...value] : value;
+    });
     saveQuiz();
     flowContent.innerHTML=`<section class="recommend-stage quiz-stage">
       <div class="recommend-head">
