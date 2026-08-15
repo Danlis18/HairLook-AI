@@ -13,10 +13,10 @@ export const config = Object.freeze({
   demoMode: bool(process.env.DEMO_MODE, false),
   trustProxy: integer(process.env.TRUST_PROXY, 1),
 
-  productName: process.env.PRODUCT_NAME || 'HairLook AI',
+  productName: process.env.PRODUCT_NAME || 'PremiumHairstyles AI',
   supportEmail: process.env.SUPPORT_EMAIL || 'support@example.com',
   supportPhone: process.env.SUPPORT_PHONE || '',
-  legalBusinessName: process.env.LEGAL_BUSINESS_NAME || 'HairLook AI',
+  legalBusinessName: process.env.LEGAL_BUSINESS_NAME || 'PremiumHairstyles AI',
   legalBusinessAddress: process.env.LEGAL_BUSINESS_ADDRESS || '',
   priceDisplayUsd: process.env.PRICE_DISPLAY_USD || '6.99',
   generationTargetCount: integer(process.env.GENERATION_TARGET_COUNT, 30),
@@ -41,7 +41,7 @@ export const config = Object.freeze({
   workerPollMs: integer(process.env.GENERATION_POLL_INTERVAL_MS, 2500),
 
   resendApiKey: process.env.RESEND_API_KEY || '',
-  emailFrom: process.env.EMAIL_FROM || 'HairLook AI <results@example.com>',
+  emailFrom: process.env.EMAIL_FROM || 'PremiumHairstyles AI <results@example.com>',
 
   adminEmails: list(process.env.ADMIN_EMAILS),
   adminPassword: process.env.ADMIN_PASSWORD || '',
