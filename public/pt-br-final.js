@@ -1,5 +1,14 @@
 (() => {
   document.documentElement.lang='pt-BR';
+
+  if(!document.querySelector('link[data-ui-polish]')){
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='/ui-polish.css';
+    link.dataset.uiPolish='true';
+    document.head.appendChild(link);
+  }
+
   const current=36.49, compare=129.90, saving=compare-current;
   const brl=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
   const titles={
