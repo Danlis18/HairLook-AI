@@ -30,3 +30,42 @@ const emailStepObserver=new MutationObserver(()=>{
 });
 const flowRoot=document.querySelector('#flowContent');
 if(flowRoot)emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
+
+// Global storefront polish for the current PremiumHairstyles AI offer.
+(function applyStorefrontOverrides(){
+  const OLD='HairLook AI';
+  const BRAND='PremiumHairstyles AI';
+  const walk=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+  const nodes=[];while(walk.nextNode())nodes.push(walk.currentNode);
+  nodes.forEach(n=>{if(n.nodeValue?.includes(OLD))n.nodeValue=n.nodeValue.split(OLD).join(BRAND);});
+  document.title=document.title.replaceAll(OLD,BRAND);
+  document.querySelectorAll('[aria-label]').forEach(el=>{const v=el.getAttribute('aria-label');if(v?.includes(OLD))el.setAttribute('aria-label',v.replaceAll(OLD,BRAND));});
+
+  const saleHtml='<span class="sale-old">$24.99</span> <strong class="sale-current">$6.99</strong> <span class="sale-badge">72% OFF</span>';
+  const heroPrice=document.querySelector('.hero-trust .trust-item:first-child');
+  if(heroPrice)heroPrice.innerHTML='<span class="trust-dot"></span>'+saleHtml+' one-time';
+  const stripPrice=document.querySelector('.trust-grid .trust-cell:first-child');
+  if(stripPrice)stripPrice.innerHTML='<span class="trust-icon">$</span><span>'+saleHtml+' one-time purchase</span>';
+
+  document.querySelectorAll('.faq details').forEach(d=>{
+    const s=d.querySelector('summary');
+    if(s?.textContent.includes('What exactly am I buying?')){
+      const p=d.querySelector('p');
+      if(p)p.innerHTML='A one-time personalized digital hairstyle visualization service. Regular price <span class="sale-old">$24.99</span>; current promotional price <strong>$6.99 USD</strong>. No subscription or automatic renewal. See Product Details for the full description.';
+    }
+  });
+
+  const productCol=[...document.querySelectorAll('.footer-col')].find(c=>c.querySelector('strong')?.textContent.trim()==='Product');
+  if(productCol){
+    const detail=[...productCol.querySelectorAll('a')].find(a=>a.getAttribute('href')==='/product');
+    if(detail)detail.textContent='Product Details';
+    if(!productCol.querySelector('a[href="/price"]')){
+      const price=document.createElement('a');price.href='/price';price.textContent='Price';
+      detail?.after(price);
+    }
+  }
+
+  const style=document.createElement('style');
+  style.textContent='.sale-old{text-decoration:line-through;opacity:.55;font-weight:600}.sale-current{color:#18372d}.sale-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#18372d;color:#fff;font-size:10px;font-weight:800;letter-spacing:.08em;white-space:nowrap}';
+  document.head.appendChild(style);
+})();
