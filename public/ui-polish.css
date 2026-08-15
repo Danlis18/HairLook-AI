@@ -26,6 +26,13 @@ body:not(.flow-open) {
   padding-top: 82px;
 }
 
+/* Match this standalone block to the same 1200px content width as the rest of the site. */
+.face-shape-card {
+  width: min(calc(100% - 40px), var(--container)) !important;
+  max-width: var(--container) !important;
+  margin: 48px auto 0 !important;
+}
+
 /* The quiz/centered eyebrow gets the same brass rule on both sides. */
 .centered .eyebrow,
 .flow-body .eyebrow,
@@ -60,6 +67,11 @@ body:not(.flow-open) {
 
   body:not(.flow-open) {
     padding-top: 76px;
+  }
+
+  .face-shape-card {
+    width: min(calc(100% - 24px), var(--container)) !important;
+    margin-top: 32px !important;
   }
 
   .centered .eyebrow::before,
