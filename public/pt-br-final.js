@@ -77,4 +77,11 @@
     script.dataset.multiSelectPolish='true';
     document.head.appendChild(script);
   }
+
+  if(location.pathname==='/' && !document.querySelector('script[data-mobile-camera-upload]')){
+    const script=document.createElement('script');
+    script.src='/mobile-camera-upload.js';
+    script.dataset.mobileCameraUpload='true';
+    document.head.appendChild(script);
+  }
 })();
