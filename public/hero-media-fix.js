@@ -3,13 +3,11 @@
   const main = document.querySelector('.hero-gallery-main');
   if (!gallery || !main) return;
 
-  // Always use the real hero video. If the current HTML still contains the
-  // legacy portrait image, replace it at runtime so the video cannot disappear.
   let video = main.querySelector('.hero-main-video');
   if (!video) {
     const legacyImage = main.querySelector('img');
     video = document.createElement('video');
-    video.className = 'hero-main-video is-loading';
+    video.className = 'hero-main-video';
     video.autoplay = true;
     video.muted = true;
     video.loop = true;
@@ -26,16 +24,14 @@
 
     if (legacyImage) legacyImage.replaceWith(video);
     else main.prepend(video);
-  } else {
-    video.classList.add('is-loading');
-    video.autoplay = true;
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.preload = 'auto';
   }
 
-  // Keep the hero clean: no side cards or note competing with the video.
+  video.autoplay = true;
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+
   gallery.querySelectorAll('.hero-gallery-small, .hero-note').forEach((el) => el.remove());
 
   const style = document.createElement('style');
@@ -68,18 +64,18 @@
       object-position: center !important;
       background: transparent !important;
       border-radius: inherit !important;
-      transform: translateZ(0);
-      transition: filter .55s ease, opacity .55s ease, transform .55s ease;
+      opacity: 1 !important;
+      filter: none !important;
+      transform: none !important;
+      transition: filter .4s ease, opacity .4s ease;
     }
-    .hero-gallery-main .hero-main-video.is-loading {
-      filter: blur(18px) saturate(.86) brightness(.94) !important;
-      opacity: .82 !important;
-      transform: scale(1.035) translateZ(0) !important;
+    .hero-gallery-main .hero-main-video.is-buffering {
+      filter: blur(14px) saturate(.9) brightness(.96) !important;
+      opacity: .9 !important;
     }
-    .hero-gallery-main .hero-main-video.is-ready {
+    .hero-gallery-main .hero-main-video.is-error {
       filter: none !important;
       opacity: 1 !important;
-      transform: scale(1) translateZ(0) !important;
     }
     .hero-gallery-small,
     .hero-note {
@@ -123,8 +119,6 @@
   `;
   document.head.appendChild(style);
 
-  // Match the wrapper to the real video dimensions. This keeps the entire video
-  // visible with no crop and no artificial letterbox/pillarbox spacing.
   const syncRatio = () => {
     if (!video.videoWidth || !video.videoHeight) return;
     const ratio = `${video.videoWidth} / ${video.videoHeight}`;
@@ -132,15 +126,39 @@
     main.style.aspectRatio = ratio;
   };
 
+  let bufferingTimer = null;
+  const clearBuffering = () => {
+    if (bufferingTimer) clearTimeout(bufferingTimer);
+    bufferingTimer = null;
+    video.classList.remove('is-buffering');
+  };
+
   const markReady = () => {
     syncRatio();
-    video.classList.remove('is-loading');
-    video.classList.add('is-ready');
+    clearBuffering();
+    video.classList.remove('is-error');
+  };
+
+  const scheduleBuffering = () => {
+    clearBuffering();
+    bufferingTimer = setTimeout(() => {
+      if (!video.paused && video.readyState < 3 && !video.error) {
+        video.classList.add('is-buffering');
+      }
+    }, 450);
   };
 
   video.addEventListener('loadedmetadata', syncRatio);
-  video.addEventListener('loadeddata', markReady, { once: true });
-  video.addEventListener('canplay', markReady, { once: true });
+  video.addEventListener('loadeddata', markReady);
+  video.addEventListener('canplay', markReady);
+  video.addEventListener('playing', markReady);
+  video.addEventListener('waiting', scheduleBuffering);
+  video.addEventListener('stalled', scheduleBuffering);
+  video.addEventListener('error', () => {
+    clearBuffering();
+    video.classList.add('is-error');
+    console.error('Hero video failed to load:', video.currentSrc || '/media/Main-Video.mp4');
+  });
 
   if (video.readyState >= 2) markReady();
   else if (video.readyState >= 1) syncRatio();
@@ -148,7 +166,6 @@
   const playPromise = video.play();
   if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
 
-  // Replace the generic stock portraits with the new premium images uploaded to /public/media.
   const premiumImages = [
     '/media/1%20(2).jpg',
     '/media/1%20(4).webp',
