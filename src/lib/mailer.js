@@ -8,8 +8,6 @@ function escapeHtml(value=''){
 }
 
 function normalizedFrom(){
-  // Be forgiving if Railway's value field accidentally contains "EMAIL_FROM=...".
-  // Always expose the customer-facing brand name as HairLook AI / PRODUCT_NAME.
   const raw=String(config.emailFrom||'').trim().replace(/^EMAIL_FROM\s*=\s*/i,'');
   const bracket=raw.match(/<\s*([^<>\s]+@[^<>\s]+)\s*>/);
   const plain=raw.match(/([^\s<>]+@[^\s<>]+)/);
@@ -22,8 +20,9 @@ function emailShell({preheader,title,lead,content,ctaLabel='',ctaUrl=''}){
   const support=escapeHtml(config.supportEmail);
   const safeTitle=escapeHtml(title);
   const safeLead=escapeHtml(lead);
+  const avatarUrl=`${config.appUrl}/media/hairlook-email-avatar.svg`;
   const cta=ctaLabel&&ctaUrl?`<tr><td style="padding:8px 34px 32px"><a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#18372d;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:15px;font-weight:700;padding:15px 24px;border-radius:999px">${escapeHtml(ctaLabel)}</a></td></tr>`:'';
-  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4f1ea"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f1ea"><tr><td align="center" style="padding:34px 14px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:620px;background:#fcfaf6;border:1px solid #e5ded3;border-radius:26px;overflow:hidden"><tr><td style="padding:28px 34px 22px;border-bottom:1px solid #e8e1d6"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="50"><div style="width:44px;height:44px;border-radius:50% 50% 50% 14%;background:#18372d;color:#c7a66b;font-family:Georgia,serif;font-size:20px;line-height:44px;text-align:center">H</div></td><td style="padding-left:12px"><div style="font-family:Arial,sans-serif;font-size:20px;font-weight:800;color:#18211d;line-height:1.1">${brand}</div><div style="font-family:Arial,sans-serif;font-size:11px;color:#7b847f;margin-top:4px">Private hairstyle consultation</div></td></tr></table></td></tr><tr><td style="padding:34px 34px 12px"><div style="font-family:Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#54705f;margin-bottom:14px">Secure customer message</div><h1 style="font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:1.05;font-weight:400;letter-spacing:-1px;color:#18211d;margin:0 0 14px">${safeTitle}</h1><p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.65;color:#667069;margin:0">${safeLead}</p></td></tr>${content}${cta}<tr><td style="padding:22px 34px 30px;border-top:1px solid #e8e1d6;font-family:Arial,sans-serif;font-size:12px;line-height:1.6;color:#7a837e"><strong style="color:#435149">${brand}</strong><br>Questions? Contact <a href="mailto:${support}" style="color:#355b49">${support}</a>.<br><span style="color:#9a9f9c">Transactional message related to your HairLook AI consultation or private order.</span></td></tr></table></td></tr></table></body></html>`;
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4f1ea"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f1ea"><tr><td align="center" style="padding:34px 14px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:620px;background:#fcfaf6;border:1px solid #e5ded3;border-radius:26px;overflow:hidden;box-shadow:0 20px 60px rgba(24,40,32,.08)"><tr><td style="padding:26px 34px 22px;border-bottom:1px solid #e8e1d6"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="50"><img src="${escapeHtml(avatarUrl)}" alt="HairLook AI" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:50%"></td><td style="padding-left:12px"><div style="font-family:Arial,sans-serif;font-size:20px;font-weight:800;color:#18211d;line-height:1.1">${brand}</div><div style="font-family:Arial,sans-serif;font-size:11px;color:#7b847f;margin-top:4px">Private hairstyle consultation</div></td></tr></table></td></tr><tr><td style="padding:34px 34px 12px"><div style="font-family:Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#54705f;margin-bottom:14px">Secure customer message</div><h1 style="font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:1.05;font-weight:400;letter-spacing:-1px;color:#18211d;margin:0 0 14px">${safeTitle}</h1><p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.65;color:#667069;margin:0">${safeLead}</p></td></tr>${content}${cta}<tr><td style="padding:22px 34px 30px;border-top:1px solid #e8e1d6;font-family:Arial,sans-serif;font-size:12px;line-height:1.6;color:#7a837e"><strong style="color:#435149">${brand}</strong><br>Questions? Contact <a href="mailto:${support}" style="color:#355b49">${support}</a>.<br><span style="color:#9a9f9c">Transactional message related to your HairLook AI consultation or private order.</span></td></tr></table></td></tr></table></body></html>`;
 }
 
 async function sendMailSafe({to,subject,text,html,reason}){
@@ -53,13 +52,13 @@ async function sendMailSafe({to,subject,text,html,reason}){
 }
 
 export async function sendMagicLink({to,url,admin=false}){
-  const subject=admin?`${config.productName} admin sign-in`:`Open your private ${config.productName} order`;
+  const subject=admin?`${config.productName} admin sign-in`:`Your secure ${config.productName} sign-in link`;
   const text=`Open your secure ${config.productName} access link: ${url}\n\nThis one-time link expires in ${config.magicLinkTtlMinutes} minutes. It signs you in automatically and can only be used once. If you did not request it, you can ignore this email.`;
   const html=emailShell({
     preheader:`Your secure ${config.productName} access link`,
-    title:admin?'Admin sign-in':'Your private access link is ready',
-    lead:`Click the button below to open your private HairLook AI order. You will be signed in automatically — no password or second email entry is required.`,
-    content:`<tr><td style="padding:10px 34px 20px"><div style="background:#f3efe6;border:1px solid #e4dccf;border-radius:18px;padding:18px 20px;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#536159"><strong style="color:#18372d">Secure one-time access</strong><br>This link expires in ${config.magicLinkTtlMinutes} minutes and can only be used once. If this wasn't you, simply ignore this message.</div></td></tr>`,
+    title:admin?'Admin sign-in':'Open your private order',
+    lead:`Your secure HairLook AI access is ready. Use the button below to sign in automatically — no password or second email entry is required.`,
+    content:`<tr><td style="padding:10px 34px 22px"><div style="background:#f3efe6;border:1px solid #e4dccf;border-radius:18px;padding:18px 20px;font-family:Arial,sans-serif;font-size:14px;line-height:1.65;color:#536159"><strong style="color:#26342e">Why did I receive this?</strong><br>You requested a secure sign-in link for your HairLook AI private order. The link expires in ${config.magicLinkTtlMinutes} minutes and works once. If this wasn't you, simply ignore this message.</div></td></tr>`,
     ctaLabel:admin?'Sign in to admin':'Open my private order',
     ctaUrl:url
   });
