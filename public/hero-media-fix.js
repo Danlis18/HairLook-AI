@@ -103,7 +103,7 @@
       width: 100% !important;
       height: 100% !important;
       object-fit: cover !important;
-      object-position: 50% 43% !important;
+      object-position: center 38% !important;
     }
     .face-photo-visual .face-contour-overlay {
       position: absolute;
@@ -111,24 +111,24 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
-      filter: drop-shadow(0 2px 4px rgba(24,55,45,.2));
+      filter: drop-shadow(0 2px 4px rgba(24,55,45,.18));
     }
     .face-photo-visual .face-contour-overlay path {
       fill: none;
-      stroke: rgba(248,245,236,.96);
-      stroke-width: 2.1;
+      stroke: rgba(248,245,236,.98);
+      stroke-width: 2.4;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
     .face-photo-visual .face-contour-overlay .accent {
       stroke: #b08e58;
-      stroke-width: 2.6;
+      stroke-width: 2.8;
     }
     .face-photo-visual::after {
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, transparent 60%, rgba(19,37,31,.12));
+      background: linear-gradient(180deg, transparent 68%, rgba(19,37,31,.08));
       pointer-events: none;
     }
     @media (min-width: 1021px) {
@@ -260,20 +260,31 @@
     consultation.style.objectPosition = 'center';
   }
 
+  // Replace the old face-shape illustration with a real portrait and a clean
+  // contour that follows the visible face instead of drawing generic features.
   const faceVisual = document.querySelector('.face-shape-visual');
   if (faceVisual) {
     faceVisual.classList.add('face-photo-visual');
     faceVisual.innerHTML = `
       <img class="face-profile-photo" src="/media/1.png" alt="Portrait example with face-shape contour" loading="lazy">
       <svg class="face-contour-overlay" viewBox="0 0 300 300" aria-hidden="true" preserveAspectRatio="none">
-        <path class="accent" d="M87 74 C110 39 189 35 216 77 C236 108 229 164 216 203 C203 239 177 265 151 270 C123 266 98 240 85 204 C72 167 68 108 87 74 Z"/>
-        <path d="M101 128 C119 116 138 116 151 126 C166 114 186 115 202 129"/>
-        <path d="M150 129 C145 154 144 173 151 184"/>
-        <path d="M126 213 C140 224 160 224 176 212"/>
+        <path class="accent" d="M118 79 C145 52 197 50 226 83 C248 109 250 158 237 196 C224 232 196 255 168 257 C141 253 119 231 107 198 C95 165 97 111 118 79 Z"/>
       </svg>`;
   }
 
-  // Use the newly supplied Video-009.mp4 in the "See the experience" section.
+  // Replace the old bun portrait used in the green checked photo examples.
+  const goodTipImages = document.querySelectorAll('.tip-panel:not(.bad) .tip-img img');
+  if (goodTipImages[0]) {
+    goodTipImages[0].src = premiumImages[2];
+    goodTipImages[0].alt = 'Clear front-facing hairstyle portrait example';
+    goodTipImages[0].style.objectPosition = 'center 35%';
+  }
+  if (goodTipImages[1]) {
+    goodTipImages[1].src = premiumImages[3];
+    goodTipImages[1].alt = 'Second clear hairstyle portrait example';
+    goodTipImages[1].style.objectPosition = 'center 38%';
+  }
+
   const demoVideo = document.querySelector('#demoVideo');
   if (demoVideo) {
     demoVideo.removeAttribute('poster');
