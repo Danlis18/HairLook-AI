@@ -3,6 +3,12 @@ try { process.loadEnvFile?.('.env'); } catch { /* Railway injects env; .env is o
 const bool = (value, fallback = false) => value == null ? fallback : ['1','true','yes','on'].includes(String(value).toLowerCase());
 const integer = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const list = (value) => String(value || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+const activeLocale = process.env.SITE_LOCALE || 'pt-BR';
+const isBrazilStorefront = activeLocale.toLowerCase() === 'pt-br';
+const usdPrice = process.env.PRICE_DISPLAY_USD || '6.99';
+const brlPrice = process.env.PRICE_DISPLAY_BRL || '36.50';
+const usdPaddlePrice = process.env.PADDLE_PRICE_ID || '';
+const brlPaddlePrice = process.env.PADDLE_PRICE_ID_BR || '';
 
 export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -13,17 +19,21 @@ export const config = Object.freeze({
   demoMode: bool(process.env.DEMO_MODE, false),
   trustProxy: integer(process.env.TRUST_PROXY, 1),
 
-  // Current storefront is pt-BR. The previous English/USD version is preserved on
-  // the `english-usd-snapshot` branch so locale routing can be added later.
-  siteLocale: process.env.SITE_LOCALE || 'pt-BR',
+  // Active storefront is Brazil/pt-BR. The previous English/USD version is
+  // preserved on the `english-usd-snapshot` branch for future language routing.
+  siteLocale: activeLocale,
+  siteCurrency: isBrazilStorefront ? 'BRL' : 'USD',
   productName: process.env.PRODUCT_NAME || 'PremiumHairstyles AI',
   supportEmail: process.env.SUPPORT_EMAIL || 'support@example.com',
   supportPhone: process.env.SUPPORT_PHONE || '',
   legalBusinessName: process.env.LEGAL_BUSINESS_NAME || 'PremiumHairstyles AI',
   legalBusinessAddress: process.env.LEGAL_BUSINESS_ADDRESS || '',
-  priceDisplayUsd: process.env.PRICE_DISPLAY_USD || '6.99',
+  // `priceDisplayUsd` remains for backward compatibility with existing routes.
+  // On the active pt-BR storefront it intentionally contains the BRL amount.
+  priceDisplayUsd: isBrazilStorefront ? brlPrice : usdPrice,
+  priceDisplayBrl: brlPrice,
+  priceDisplayUsdSaved: usdPrice,
   compareAtPriceUsd: process.env.COMPARE_AT_PRICE_USD || '24.99',
-  priceDisplayBrl: process.env.PRICE_DISPLAY_BRL || '36.50',
   compareAtPriceBrl: process.env.COMPARE_AT_PRICE_BRL || '129.90',
   generationTargetCount: integer(process.env.GENERATION_TARGET_COUNT, 30),
 
@@ -36,10 +46,11 @@ export const config = Object.freeze({
   paddleEnvironment: process.env.PADDLE_ENVIRONMENT || 'sandbox',
   paddleApiKey: process.env.PADDLE_API_KEY || '',
   paddleClientToken: process.env.PADDLE_CLIENT_TOKEN || '',
-  // Keep PADDLE_PRICE_ID for the preserved English/USD storefront. The active
-  // Brazilian storefront uses PADDLE_PRICE_ID_BR so we never silently charge USD.
-  paddlePriceId: process.env.PADDLE_PRICE_ID || '',
-  paddlePriceIdBr: process.env.PADDLE_PRICE_ID_BR || '',
+  // Existing routes read paddlePriceId. For pt-BR it resolves only to the
+  // dedicated BRL Paddle price; we never silently fall back to a USD price.
+  paddlePriceId: isBrazilStorefront ? brlPaddlePrice : usdPaddlePrice,
+  paddlePriceIdUsd: usdPaddlePrice,
+  paddlePriceIdBr: brlPaddlePrice,
   paddleWebhookSecret: process.env.PADDLE_WEBHOOK_SECRET || '',
 
   aiProvider: process.env.AI_PROVIDER || 'replicate',
@@ -91,9 +102,9 @@ export function assertProductionConfig() {
     ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
     ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
   ];
-  // Do not crash the whole service if the Brazilian Paddle price has not been
-  // created yet; /api/checkout returns a clear configuration error instead.
-  if (config.siteLocale !== 'pt-BR') required.push(['PADDLE_PRICE_ID', config.paddlePriceId]);
+  // Missing BRL price must not take the whole application down. Checkout will
+  // stay disabled until PADDLE_PRICE_ID_BR is supplied in Railway.
+  if (!isBrazilStorefront) required.push(['PADDLE_PRICE_ID', config.paddlePriceId]);
   if (config.paymentProvider !== 'paddle') required.push(['PAYMENT_PROVIDER must be paddle', config.paymentProvider === 'paddle' ? 'ok' : '']);
   if (!['sandbox','production'].includes(config.paddleEnvironment)) required.push(['PADDLE_ENVIRONMENT must be sandbox or production', '']);
   if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
