@@ -26,6 +26,12 @@ body:not(.flow-open) {
   padding-top: 82px;
 }
 
+/* The public "Find my style" controls must not stay visible over the active quiz. */
+body.flow-open .site-header .header-actions,
+body.flow-open .site-header [data-start-quiz] {
+  display: none !important;
+}
+
 /* Match this standalone block to the same 1200px content width as the rest of the site. */
 .face-shape-card {
   width: min(calc(100% - 40px), var(--container)) !important;
