@@ -91,6 +91,46 @@
       object-fit: cover;
       object-position: center;
     }
+    .face-shape-visual.face-photo-visual {
+      position: relative !important;
+      display: block !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      background: #dfe8e1 !important;
+      aspect-ratio: 1 / 1 !important;
+    }
+    .face-photo-visual .face-profile-photo {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      object-position: 50% 43% !important;
+    }
+    .face-photo-visual .face-contour-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 4px rgba(24,55,45,.2));
+    }
+    .face-photo-visual .face-contour-overlay path {
+      fill: none;
+      stroke: rgba(248,245,236,.96);
+      stroke-width: 2.1;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .face-photo-visual .face-contour-overlay .accent {
+      stroke: #b08e58;
+      stroke-width: 2.6;
+    }
+    .face-photo-visual::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 60%, rgba(19,37,31,.12));
+      pointer-events: none;
+    }
     @media (min-width: 1021px) {
       .hero {
         min-height: 760px !important;
@@ -220,9 +260,20 @@
     consultation.style.objectPosition = 'center';
   }
 
+  const faceVisual = document.querySelector('.face-shape-visual');
+  if (faceVisual) {
+    faceVisual.classList.add('face-photo-visual');
+    faceVisual.innerHTML = `
+      <img class="face-profile-photo" src="/media/1.png" alt="Portrait example with face-shape contour" loading="lazy">
+      <svg class="face-contour-overlay" viewBox="0 0 300 300" aria-hidden="true" preserveAspectRatio="none">
+        <path class="accent" d="M87 74 C110 39 189 35 216 77 C236 108 229 164 216 203 C203 239 177 265 151 270 C123 266 98 240 85 204 C72 167 68 108 87 74 Z"/>
+        <path d="M101 128 C119 116 138 116 151 126 C166 114 186 115 202 129"/>
+        <path d="M150 129 C145 154 144 173 151 184"/>
+        <path d="M126 213 C140 224 160 224 176 212"/>
+      </svg>`;
+  }
+
   // Use the newly supplied Video-009.mp4 in the "See the experience" section.
-  // Keep the existing play-button behavior, but remove the old poster so the
-  // previous stock frame never flashes before playback.
   const demoVideo = document.querySelector('#demoVideo');
   if (demoVideo) {
     demoVideo.removeAttribute('poster');
