@@ -9,6 +9,7 @@
     document.head.appendChild(link);
   }
 
+  const SUPPORT_EMAIL='support@mail.premium-hairstyles.com';
   const current=36.49, compare=129.90, saving=compare-current;
   const brl=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
   const titles={
@@ -49,6 +50,26 @@
     [items[1],items[2]].forEach(el=>el?.remove());
   };
 
+  const applySupportEmail=()=>{
+    const supportCol=[...document.querySelectorAll('.footer-col')].find(col=>{
+      const title=col.querySelector('strong')?.textContent.trim().toLowerCase();
+      return title==='support' || title==='suporte';
+    });
+    if(supportCol && !supportCol.querySelector('[data-brand-support-email]')){
+      const link=document.createElement('a');
+      link.href=`mailto:${SUPPORT_EMAIL}`;
+      link.textContent=SUPPORT_EMAIL;
+      link.dataset.brandSupportEmail='true';
+      supportCol.appendChild(link);
+    }
+    document.querySelectorAll('a[href^="mailto:"]').forEach(link=>{
+      if(/support@example\.com|results@example\.com/i.test(link.getAttribute('href')||'')){
+        link.href=`mailto:${SUPPORT_EMAIL}`;
+        link.textContent=SUPPORT_EMAIL;
+      }
+    });
+  };
+
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
   const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
   nodes.forEach(n=>{
@@ -58,10 +79,13 @@
     else if(t.includes('$6.99'))n.nodeValue=t.replaceAll('$6.99','R$ 36,49');
     else if(t.includes('$24.99 USD'))n.nodeValue=t.replaceAll('$24.99 USD','R$ 129,90');
     else if(t.includes('$24.99'))n.nodeValue=t.replaceAll('$24.99','R$ 129,90');
+    if(t.includes('support@example.com'))n.nodeValue=n.nodeValue.replaceAll('support@example.com',SUPPORT_EMAIL);
+    if(t.includes('results@example.com'))n.nodeValue=n.nodeValue.replaceAll('results@example.com',SUPPORT_EMAIL);
   });
   applyPrice();
   removeHeroTrustExtras();
-  const observer=new MutationObserver(()=>requestAnimationFrame(()=>{applyPrice();removeHeroTrustExtras();}));
+  applySupportEmail();
+  const observer=new MutationObserver(()=>requestAnimationFrame(()=>{applyPrice();removeHeroTrustExtras();applySupportEmail();}));
   observer.observe(document.body,{childList:true,subtree:true});
 
   if(location.pathname==='/' && !document.querySelector('script[data-quiz-ui-fix]')){
