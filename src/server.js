@@ -53,7 +53,7 @@ app.use('/api/auth', authLimiter);
 app.use('/api/admin/auth', authLimiter);
 app.use('/api/verify-email', authLimiter);
 
-app.get('/health', (req, res) => res.json({ ok: true, service: 'hairlook-ai', demoMode: config.demoMode, timestamp: new Date().toISOString() }));
+app.get('/health', (req, res) => res.json({ ok: true, service: 'hairlook-ai', demoMode: config.demoMode, locale:config.siteLocale, currency:config.siteCurrency, timestamp: new Date().toISOString() }));
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/admin', adminRoutes);
@@ -90,6 +90,7 @@ if (config.demoMode) {
 }
 
 app.use(express.static(path.join(root, 'public'), {
+  index: false,
   etag: true,
   maxAge: '1d',
   setHeaders(res, filePath) {
@@ -97,7 +98,23 @@ app.use(express.static(path.join(root, 'public'), {
   }
 }));
 
-const page = name => (req, res) => res.sendFile(path.join(root, 'public', name));
+// Source HTML remains the English master. The active production storefront gets
+// the pt-BR layer at response time; the pre-localization English/USD copy is also
+// preserved on branch `english-usd-snapshot` for future locale routing.
+const page = (name, { localize=true } = {}) => (req, res, next) => {
+  const filePath = path.join(root, 'public', name);
+  if (!localize || config.siteLocale.toLowerCase() !== 'pt-br') return res.sendFile(filePath);
+  fs.readFile(filePath, 'utf8', (error, html) => {
+    if (error) return next(error);
+    let localized = html.replace(/<html\s+lang="en"/i, '<html lang="pt-BR"');
+    const tags = '<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script>';
+    if (!localized.includes('/pt-br-runtime.js')) localized = localized.replace('</head>', `${tags}</head>`);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(localized);
+  });
+};
+
 app.get('/', page('index.html'));
 app.get('/product', page('product.html'));
 app.get('/price', page('price.html'));
@@ -105,7 +122,7 @@ app.get('/personal-plan', page('personal-plan.html'));
 app.get('/dashboard', page('dashboard.html'));
 app.get('/signin', page('signin.html'));
 app.get('/demo-checkout', page('demo-checkout.html'));
-app.get('/admin', page('admin.html'));
+app.get('/admin', page('admin.html', {localize:false}));
 app.get('/privacy', page('privacy.html'));
 app.get('/terms', page('terms.html'));
 app.get('/refund', page('refund.html'));
@@ -114,16 +131,25 @@ app.get('/cookies', page('cookies.html'));
 app.get('/contact', page('contact.html'));
 app.get('/about', page('about.html'));
 
-app.use((req, res) => res.status(404).sendFile(path.join(root, 'public', '404.html')));
+app.use((req, res, next) => {
+  if (config.siteLocale.toLowerCase() !== 'pt-br') return res.status(404).sendFile(path.join(root, 'public', '404.html'));
+  const filePath=path.join(root,'public','404.html');
+  fs.readFile(filePath,'utf8',(error,html)=>{
+    if(error)return next(error);
+    const tags='<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script>';
+    const localized=html.replace(/<html\s+lang="en"/i,'<html lang="pt-BR"').replace('</head>',`${tags}</head>`);
+    res.status(404).type('html').send(localized);
+  });
+});
 app.use((error, req, res, next) => {
   const status = error?.name === 'ZodError' ? 400 : error?.code === 'LIMIT_FILE_SIZE' ? 413 : 500;
   const publicMessage = status < 500 ? (error.code === 'LIMIT_FILE_SIZE' ? 'file_too_large' : 'invalid_request') : 'server_error';
   log.error('request_error', { method: req.method, path: req.originalUrl, status, error: error.stack || error.message });
   if (req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/admin/magic')) return res.status(status).json({ error: publicMessage, details: config.isProduction ? undefined : error.message });
-  res.status(status).send('Something went wrong. Please try again.');
+  res.status(status).send(config.siteLocale.toLowerCase()==='pt-br'?'Algo deu errado. Tente novamente.':'Something went wrong. Please try again.');
 });
 
-const server = app.listen(config.port, () => log.info('server_started', { port: config.port, appUrl: config.appUrl, demoMode: config.demoMode }));
+const server = app.listen(config.port, () => log.info('server_started', { port: config.port, appUrl: config.appUrl, demoMode: config.demoMode, locale:config.siteLocale, currency:config.siteCurrency }));
 const controller = new AbortController();
 if (config.demoMode) startWorker({ signal: controller.signal }).catch(error => log.error('demo_worker_crash', { error:error.message }));
 for (const sig of ['SIGINT','SIGTERM']) process.on(sig, () => { controller.abort(); server.close(() => process.exit(0)); });

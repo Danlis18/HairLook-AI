@@ -9,7 +9,8 @@ function setState({eyebrow,title,message,email='',confirmed=false,error=false}){
   if(email){emailEl.textContent=email;emailEl.hidden=false;}else emailEl.hidden=true;
   $('#orderSpinner').style.display=confirmed||error?'none':'block';
   $('#homeButton').hidden=!confirmed;
-  $('#orderNote').textContent=confirmed?'No further action is needed. We’ll email you when your results are ready.':error?'If this continues, contact support.':'You do not need to refresh this page.';
+  $('#orderNote').textContent=confirmed?'Nenhuma ação adicional é necessária. Enviaremos um e-mail quando seus resultados estiverem prontos.':error?'Se o problema continuar, entre em contato com o suporte.':'Não é necessário atualizar esta página.';
+  const home=$('#homeButton');if(home)home.textContent='Voltar ao início';
 }
 
 async function loadStatus(){
@@ -17,7 +18,7 @@ async function loadStatus(){
   try{
     const res=await fetch('/api/dashboard',{cache:'no-store'});
     if(res.status===401){
-      setState({eyebrow:'Session expired',title:'We could not open this order.',message:'Please contact support using the same email address you used for your consultation.',error:true});
+      setState({eyebrow:'Sessão expirada',title:'Não foi possível abrir este pedido.',message:'Entre em contato com o suporte usando o mesmo e-mail informado na consultoria.',error:true});
       return;
     }
     const data=await res.json().catch(()=>({}));
@@ -26,27 +27,27 @@ async function loadStatus(){
     const lead=data.lead||{};
     if(lead.paymentStatus==='paid'){
       setState({
-        eyebrow:'Order confirmed',
-        title:'Thank you. Your order is confirmed.',
-        message:'Your personalized hairstyle results are now being prepared and will be sent to your verified email within 72 hours.',
+        eyebrow:'Pedido confirmado',
+        title:'Obrigado. Seu pedido foi confirmado.',
+        message:'Seus resultados personalizados estão sendo preparados e serão enviados para o seu e-mail verificado em até 72 horas.',
         email:lead.email||'',
         confirmed:true
       });
-      fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sessionStorage.getItem('hairlook_session_id')||'dashboard',eventName:'dashboard_view',metadata:{state:'manual_pending'}})}).catch(()=>{});
+      fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sessionStorage.getItem('hairlook_session_id')||'dashboard',eventName:'dashboard_view',metadata:{state:'manual_pending',locale:'pt-BR',currency:'BRL'}})}).catch(()=>{});
       return;
     }
 
     if(['checkout_started','waiting','unpaid'].includes(lead.paymentStatus)){
-      setState({eyebrow:'Confirming payment',title:'Please wait a moment.',message:'We’re securely confirming your payment. This usually takes only a few seconds.',email:lead.email||''});
+      setState({eyebrow:'Confirmando pagamento',title:'Aguarde um momento.',message:'Estamos confirmando seu pagamento com segurança. Normalmente isso leva apenas alguns segundos.',email:lead.email||''});
       pollTimer=setTimeout(loadStatus,2500);
       return;
     }
 
-    setState({eyebrow:'Payment status',title:'We’re checking your order.',message:'Your payment has not been confirmed yet. Please wait a moment.',email:lead.email||''});
+    setState({eyebrow:'Status do pagamento',title:'Estamos verificando seu pedido.',message:'Seu pagamento ainda não foi confirmado. Aguarde um momento.',email:lead.email||''});
     pollTimer=setTimeout(loadStatus,3000);
   }catch(error){
     console.error('order_status_failed',error);
-    setState({eyebrow:'Checking order',title:'We’re still confirming your order.',message:'There was a temporary connection issue. We’ll try again automatically.'});
+    setState({eyebrow:'Verificando pedido',title:'Ainda estamos confirmando seu pedido.',message:'Houve uma falha temporária de conexão. Tentaremos novamente automaticamente.'});
     pollTimer=setTimeout(loadStatus,4000);
   }
 }
