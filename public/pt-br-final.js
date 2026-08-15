@@ -63,4 +63,11 @@
   removeHeroTrustExtras();
   const observer=new MutationObserver(()=>requestAnimationFrame(()=>{applyPrice();removeHeroTrustExtras();}));
   observer.observe(document.body,{childList:true,subtree:true});
+
+  if(location.pathname==='/' && !document.querySelector('script[data-quiz-ui-fix]')){
+    const script=document.createElement('script');
+    script.src='/quiz-ui-fix.js';
+    script.dataset.quizUiFix='true';
+    document.head.appendChild(script);
+  }
 })();
