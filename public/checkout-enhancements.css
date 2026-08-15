@@ -12,10 +12,11 @@
 .plan-page .price-row{margin:22px 0 16px;padding:21px 22px;border:1px solid rgba(24,55,45,.12);border-radius:20px;background:linear-gradient(135deg,#fffdf9,#f5f0e7);display:flex;align-items:center;justify-content:space-between;gap:18px}
 .plan-page .price{font-size:58px;line-height:1;color:#163c30}
 .plan-page .price-note{text-align:right}
+.plan-page .sale-inline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.plan-page .price-old{text-decoration:line-through;text-decoration-thickness:2px;color:#8e9691;font-size:23px;font-weight:700}.plan-page .checkout-sale-badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;background:#18372d;color:#fff;font-size:10px;font-weight:800;letter-spacing:.08em;white-space:nowrap}
 .plan-page .checkout-assurance{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
 .plan-page .checkout-assurance div{padding:13px 14px;border-radius:14px;background:#f3f6f2;border:1px solid rgba(24,55,45,.1);font-size:12px;line-height:1.45;color:#5b6761}
 .plan-page .checkout-assurance strong{display:block;color:#243a31;margin-bottom:2px}
 .plan-page #checkoutButton{min-height:60px;font-size:16px;box-shadow:0 18px 36px rgba(24,55,45,.18)}
 .plan-page .checkout-note{text-align:center;margin-top:12px;font-size:11px;color:#78817c}
 @media(max-width:900px){.plan-page .paywall-wrap{grid-template-columns:1fr;max-width:700px;padding:26px}.plan-page .card-stack{margin-inline:auto}.plan-page .include-list{grid-template-columns:1fr}.plan-page .price{font-size:50px}}
-@media(max-width:560px){.plan-page .analysis-stage{padding:18px 12px 30px}.plan-page .paywall-wrap{padding:20px 16px;border-radius:26px}.plan-page .checkout-assurance{grid-template-columns:1fr}.plan-page .price-row{align-items:flex-end}.plan-page .price{font-size:44px}.plan-page .price-note{font-size:11px}.plan-page .paywall-copy h1{font-size:44px}}
+@media(max-width:560px){.plan-page .analysis-stage{padding:18px 12px 30px}.plan-page .paywall-wrap{padding:20px 16px;border-radius:26px}.plan-page .checkout-assurance{grid-template-columns:1fr}.plan-page .price-row{align-items:flex-end}.plan-page .price{font-size:44px}.plan-page .price-note{font-size:11px}.plan-page .paywall-copy h1{font-size:44px}.plan-page .sale-inline{gap:7px}.plan-page .price-old{font-size:19px}}
