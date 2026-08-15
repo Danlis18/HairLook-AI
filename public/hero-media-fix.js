@@ -105,25 +105,6 @@
       object-fit: cover !important;
       object-position: center 38% !important;
     }
-    .face-photo-visual .face-contour-overlay {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      filter: drop-shadow(0 2px 4px rgba(24,55,45,.18));
-    }
-    .face-photo-visual .face-contour-overlay path {
-      fill: none;
-      stroke: rgba(248,245,236,.98);
-      stroke-width: 2.4;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    .face-photo-visual .face-contour-overlay .accent {
-      stroke: #b08e58;
-      stroke-width: 2.8;
-    }
     .face-photo-visual::after {
       content: '';
       position: absolute;
@@ -260,16 +241,11 @@
     consultation.style.objectPosition = 'center';
   }
 
-  // Replace the old face-shape illustration with a real portrait and a clean
-  // contour that follows the visible face instead of drawing generic features.
+  // Use a clean portrait in this block with no artificial face contour overlay.
   const faceVisual = document.querySelector('.face-shape-visual');
   if (faceVisual) {
     faceVisual.classList.add('face-photo-visual');
-    faceVisual.innerHTML = `
-      <img class="face-profile-photo" src="/media/1.png" alt="Portrait example with face-shape contour" loading="lazy">
-      <svg class="face-contour-overlay" viewBox="0 0 300 300" aria-hidden="true" preserveAspectRatio="none">
-        <path class="accent" d="M118 79 C145 52 197 50 226 83 C248 109 250 158 237 196 C224 232 196 255 168 257 C141 253 119 231 107 198 C95 165 97 111 118 79 Z"/>
-      </svg>`;
+    faceVisual.innerHTML = `<img class="face-profile-photo" src="/media/1.png" alt="Premium hairstyle portrait example" loading="lazy">`;
   }
 
   // Replace the old bun portrait used in the green checked photo examples.
