@@ -90,6 +90,7 @@ if (config.demoMode) {
 }
 
 app.use(express.static(path.join(root, 'public'), {
+  index: false,
   etag: true,
   maxAge: '1d',
   setHeaders(res, filePath) {
@@ -97,18 +98,16 @@ app.use(express.static(path.join(root, 'public'), {
   }
 }));
 
-// Friendly customer pages are localized at response time. The source HTML stays
-// as the English master copy, while the active production storefront receives a
-// lightweight pt-BR translation layer. This keeps the two variants cleanly
-// separable until locale routing is introduced later.
+// Friendly customer pages are localized at response time. Source HTML remains
+// the English master; the active storefront gets the Brazil translation layer.
 const page = (name, { localize=true } = {}) => (req, res, next) => {
   const filePath = path.join(root, 'public', name);
   if (!localize || config.siteLocale.toLowerCase() !== 'pt-br') return res.sendFile(filePath);
   fs.readFile(filePath, 'utf8', (error, html) => {
     if (error) return next(error);
     let localized = html.replace(/<html\s+lang="en"/i, '<html lang="pt-BR"');
-    const tag = '<script src="/pt-br.js" defer></script>';
-    if (!localized.includes('/pt-br.js')) localized = localized.replace('</head>', `${tag}</head>`);
+    const tags = '<script src="/pt-br.js" defer></script><script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script>';
+    if (!localized.includes('/pt-br.js')) localized = localized.replace('</head>', `${tags}</head>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     res.send(localized);
@@ -136,7 +135,8 @@ app.use((req, res, next) => {
   const filePath=path.join(root,'public','404.html');
   fs.readFile(filePath,'utf8',(error,html)=>{
     if(error)return next(error);
-    const localized=html.replace(/<html\s+lang="en"/i,'<html lang="pt-BR"').replace('</head>','<script src="/pt-br.js" defer></script></head>');
+    const tags='<script src="/pt-br.js" defer></script><script src="/pt-br-runtime.js" defer></script>';
+    const localized=html.replace(/<html\s+lang="en"/i,'<html lang="pt-BR"').replace('</head>',`${tags}</head>`);
     res.status(404).type('html').send(localized);
   });
 });
