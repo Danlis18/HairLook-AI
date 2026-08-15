@@ -6,7 +6,7 @@ const list = (value) => String(value || '').split(',').map(v => v.trim().toLower
 const activeLocale = process.env.SITE_LOCALE || 'pt-BR';
 const isBrazilStorefront = activeLocale.toLowerCase() === 'pt-br';
 const usdPrice = process.env.PRICE_DISPLAY_USD || '6.99';
-const brlPrice = process.env.PRICE_DISPLAY_BRL || '36.50';
+const brlPrice = process.env.PRICE_DISPLAY_BRL || '36.49';
 const usdPaddlePrice = process.env.PADDLE_PRICE_ID || '';
 const brlPaddlePrice = process.env.PADDLE_PRICE_ID_BR || '';
 
