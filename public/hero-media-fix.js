@@ -45,6 +45,11 @@
       left: 16px !important;
       bottom: 16px !important;
     }
+    .gallery-scroller .style-card img,
+    .consultation-photo {
+      object-fit: cover;
+      object-position: center;
+    }
     @media (min-width: 1021px) {
       .hero {
         min-height: 760px !important;
@@ -88,4 +93,61 @@
 
   if (video.readyState >= 1) syncRatio();
   else video.addEventListener('loadedmetadata', syncRatio, { once: true });
+
+  // Replace the generic stock portraits with the new premium images uploaded to /public/media.
+  const premiumImages = [
+    '/media/1%20(2).jpg',
+    '/media/1%20(4).webp',
+    '/media/1.png',
+    '/media/2%20(2).png',
+    '/media/3.jpg',
+    '/media/4%20(2).png'
+  ];
+
+  const cards = [...document.querySelectorAll('.gallery-scroller .style-card')];
+  const labels = [
+    ['Soft Layers', 'Natural · polished'],
+    ['Modern Texture', 'Fresh · dimensional'],
+    ['Elegant Shape', 'Refined · wearable'],
+    ['Soft Movement', 'Light · effortless'],
+    ['Statement Style', 'Bold · premium'],
+    ['Color & Finish', 'Glossy · dimensional']
+  ];
+
+  cards.slice(0, 4).forEach((card, i) => {
+    const img = card.querySelector('img');
+    if (img) {
+      img.src = premiumImages[i];
+      img.alt = `${labels[i][0]} hairstyle inspiration`;
+      img.style.objectPosition = 'center';
+    }
+    const strong = card.querySelector('.style-meta strong');
+    const span = card.querySelector('.style-meta span');
+    if (strong) strong.textContent = labels[i][0];
+    if (span) span.textContent = labels[i][1];
+  });
+
+  const colorCard = document.querySelector('.gallery-scroller .color-direction-card');
+  if (colorCard) {
+    colorCard.className = 'style-card';
+    colorCard.innerHTML = `<img src="${premiumImages[4]}" alt="${labels[4][0]} hairstyle inspiration" loading="lazy"><div class="style-meta"><strong>${labels[4][0]}</strong><span>${labels[4][1]}</span></div>`;
+  }
+
+  // Add the sixth image so the inspiration strip feels richer and uses the full uploaded set.
+  const scroller = document.querySelector('.gallery-scroller');
+  if (scroller && !scroller.querySelector('[data-premium-extra]')) {
+    const extra = document.createElement('article');
+    extra.className = 'style-card';
+    extra.dataset.premiumExtra = 'true';
+    extra.innerHTML = `<img src="${premiumImages[5]}" alt="${labels[5][0]} hairstyle inspiration" loading="lazy"><div class="style-meta"><strong>${labels[5][0]}</strong><span>${labels[5][1]}</span></div>`;
+    scroller.appendChild(extra);
+  }
+
+  // Also replace the old generic consultation portrait further down the page.
+  const consultation = document.querySelector('.consultation-photo');
+  if (consultation) {
+    consultation.src = premiumImages[5];
+    consultation.alt = 'Premium hairstyle consultation inspiration portrait';
+    consultation.style.objectPosition = 'center';
+  }
 })();
