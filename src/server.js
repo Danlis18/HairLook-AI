@@ -107,7 +107,7 @@ const page = (name, { localize=true } = {}) => (req, res, next) => {
   fs.readFile(filePath, 'utf8', (error, html) => {
     if (error) return next(error);
     let localized = html.replace(/<html\s+lang="en"/i, '<html lang="pt-BR"');
-    const tags = '<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script>';
+    const tags = '<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script>';
     if (!localized.includes('/pt-br-runtime.js')) localized = localized.replace('</head>', `${tags}</head>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
@@ -136,7 +136,7 @@ app.use((req, res, next) => {
   const filePath=path.join(root,'public','404.html');
   fs.readFile(filePath,'utf8',(error,html)=>{
     if(error)return next(error);
-    const tags='<script src="/pt-br-runtime.js" defer></script>';
+    const tags='<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script>';
     const localized=html.replace(/<html\s+lang="en"/i,'<html lang="pt-BR"').replace('</head>',`${tags}</head>`);
     res.status(404).type('html').send(localized);
   });
