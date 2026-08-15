@@ -219,4 +219,26 @@
     consultation.alt = 'Premium hairstyle consultation inspiration portrait';
     consultation.style.objectPosition = 'center';
   }
+
+  // Use the newly supplied Video-009.mp4 in the "See the experience" section.
+  // Keep the existing play-button behavior, but remove the old poster so the
+  // previous stock frame never flashes before playback.
+  const demoVideo = document.querySelector('#demoVideo');
+  if (demoVideo) {
+    demoVideo.removeAttribute('poster');
+    demoVideo.preload = 'metadata';
+    demoVideo.playsInline = true;
+    const demoSource = demoVideo.querySelector('source');
+    if (demoSource) {
+      demoSource.dataset.src = '/media/Video-009.mp4';
+      demoSource.src = '/media/Video-009.mp4';
+    } else {
+      const source = document.createElement('source');
+      source.src = '/media/Video-009.mp4';
+      source.dataset.src = '/media/Video-009.mp4';
+      source.type = 'video/mp4';
+      demoVideo.appendChild(source);
+    }
+    demoVideo.load();
+  }
 })();
