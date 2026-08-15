@@ -13,12 +13,18 @@ export const config = Object.freeze({
   demoMode: bool(process.env.DEMO_MODE, false),
   trustProxy: integer(process.env.TRUST_PROXY, 1),
 
+  // Current storefront is pt-BR. The previous English/USD version is preserved on
+  // the `english-usd-snapshot` branch so locale routing can be added later.
+  siteLocale: process.env.SITE_LOCALE || 'pt-BR',
   productName: process.env.PRODUCT_NAME || 'PremiumHairstyles AI',
   supportEmail: process.env.SUPPORT_EMAIL || 'support@example.com',
   supportPhone: process.env.SUPPORT_PHONE || '',
   legalBusinessName: process.env.LEGAL_BUSINESS_NAME || 'PremiumHairstyles AI',
   legalBusinessAddress: process.env.LEGAL_BUSINESS_ADDRESS || '',
   priceDisplayUsd: process.env.PRICE_DISPLAY_USD || '6.99',
+  compareAtPriceUsd: process.env.COMPARE_AT_PRICE_USD || '24.99',
+  priceDisplayBrl: process.env.PRICE_DISPLAY_BRL || '36.50',
+  compareAtPriceBrl: process.env.COMPARE_AT_PRICE_BRL || '129.90',
   generationTargetCount: integer(process.env.GENERATION_TARGET_COUNT, 30),
 
   supabaseUrl: process.env.SUPABASE_URL || '',
@@ -30,7 +36,10 @@ export const config = Object.freeze({
   paddleEnvironment: process.env.PADDLE_ENVIRONMENT || 'sandbox',
   paddleApiKey: process.env.PADDLE_API_KEY || '',
   paddleClientToken: process.env.PADDLE_CLIENT_TOKEN || '',
+  // Keep PADDLE_PRICE_ID for the preserved English/USD storefront. The active
+  // Brazilian storefront uses PADDLE_PRICE_ID_BR so we never silently charge USD.
   paddlePriceId: process.env.PADDLE_PRICE_ID || '',
+  paddlePriceIdBr: process.env.PADDLE_PRICE_ID_BR || '',
   paddleWebhookSecret: process.env.PADDLE_WEBHOOK_SECRET || '',
 
   aiProvider: process.env.AI_PROVIDER || 'replicate',
@@ -76,13 +85,15 @@ export function assertProductionConfig() {
     ['SUPABASE_URL', config.supabaseUrl],
     ['SUPABASE_SECRET_KEY', config.supabaseSecretKey],
     ['PADDLE_CLIENT_TOKEN', config.paddleClientToken],
-    ['PADDLE_PRICE_ID', config.paddlePriceId],
     ['PADDLE_WEBHOOK_SECRET', config.paddleWebhookSecret],
     ['ADMIN_EMAILS', process.env.ADMIN_EMAILS],
     ['SUPPORT_EMAIL', process.env.SUPPORT_EMAIL],
     ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
     ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
   ];
+  // Do not crash the whole service if the Brazilian Paddle price has not been
+  // created yet; /api/checkout returns a clear configuration error instead.
+  if (config.siteLocale !== 'pt-BR') required.push(['PADDLE_PRICE_ID', config.paddlePriceId]);
   if (config.paymentProvider !== 'paddle') required.push(['PAYMENT_PROVIDER must be paddle', config.paymentProvider === 'paddle' ? 'ok' : '']);
   if (!['sandbox','production'].includes(config.paddleEnvironment)) required.push(['PADDLE_ENVIRONMENT must be sandbox or production', '']);
   if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
