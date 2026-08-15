@@ -41,6 +41,28 @@ if(flowRoot)emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
   document.title=document.title.replaceAll(OLD,BRAND);
   document.querySelectorAll('[aria-label]').forEach(el=>{const v=el.getAttribute('aria-label');if(v?.includes(OLD))el.setAttribute('aria-label',v.replaceAll(OLD,BRAND));});
 
+  // Replace only the large hero portrait with the supplied autoplay video.
+  // Decorative small cards and the overlay note stay untouched.
+  const heroMain=document.querySelector('.hero-gallery-main');
+  const heroImage=heroMain?.querySelector('img');
+  if(heroMain && heroImage && !heroMain.querySelector('video')){
+    const video=document.createElement('video');
+    video.className='hero-main-video';
+    video.autoplay=true;
+    video.muted=true;
+    video.loop=true;
+    video.playsInline=true;
+    video.preload='metadata';
+    video.poster='/media/style-portrait-2.jpg';
+    video.setAttribute('aria-label','PremiumHairstyles AI hairstyle preview video');
+    const source=document.createElement('source');
+    source.src='/media/Main-Video.mp4';
+    source.type='video/mp4';
+    video.appendChild(source);
+    heroImage.replaceWith(video);
+    video.play().catch(()=>{});
+  }
+
   const saleHtml='<span class="sale-old">$24.99</span> <strong class="sale-current">$6.99</strong> <span class="sale-badge">72% OFF</span>';
   const heroPrice=document.querySelector('.hero-trust .trust-item:first-child');
   if(heroPrice)heroPrice.innerHTML='<span class="trust-dot"></span>'+saleHtml+' one-time';
@@ -66,6 +88,13 @@ if(flowRoot)emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
   }
 
   const style=document.createElement('style');
-  style.textContent='.sale-old{text-decoration:line-through;opacity:.55;font-weight:600}.sale-current{color:#18372d}.sale-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#18372d;color:#fff;font-size:10px;font-weight:800;letter-spacing:.08em;white-space:nowrap}';
+  style.textContent=`
+    .sale-old{text-decoration:line-through;opacity:.55;font-weight:600}
+    .sale-current{color:#18372d}
+    .sale-badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#18372d;color:#fff;font-size:10px;font-weight:800;letter-spacing:.08em;white-space:nowrap}
+    .hero-gallery-main .hero-main-video{display:block;width:100%;height:100%;min-height:100%;object-fit:cover;object-position:center;border-radius:inherit;background:#18372d}
+    .hero-gallery-main{overflow:hidden}
+    @media (prefers-reduced-motion:reduce){.hero-gallery-main .hero-main-video{animation:none}}
+  `;
   document.head.appendChild(style);
 })();
