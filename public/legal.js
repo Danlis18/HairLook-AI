@@ -10,3 +10,12 @@ fetch('/api/config',{cache:'no-store'}).then(r=>r.json()).then(c=>{
   document.querySelectorAll('[data-phone-row]').forEach(el=>{el.hidden=!c.supportPhone;});
 }).catch(()=>{});
 document.querySelectorAll('[data-year]').forEach(el=>el.textContent=new Date().getFullYear());
+
+(function normalizeBrand(){
+  const OLD='HairLook AI', BRAND='PremiumHairstyles AI';
+  const walk=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const nodes=[];
+  while(walk.nextNode())nodes.push(walk.currentNode);
+  nodes.forEach(n=>{if(n.nodeValue?.includes(OLD))n.nodeValue=n.nodeValue.split(OLD).join(BRAND);});
+  document.title=document.title.replaceAll(OLD,BRAND);
+  document.querySelectorAll('meta[content]').forEach(el=>{const v=el.getAttribute('content');if(v?.includes(OLD))el.setAttribute('content',v.replaceAll(OLD,BRAND));});
+})();
