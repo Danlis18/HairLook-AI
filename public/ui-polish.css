@@ -1,0 +1,76 @@
+/* Final visual polish: symmetric eyebrow accents + persistent header */
+
+/* Keep the public header permanently visible and separated from content. */
+.site-header {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+  height: 82px !important;
+  background: rgba(247,243,235,.94) !important;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(24,55,45,.14) !important;
+  box-shadow: 0 1px 0 rgba(24,55,45,.03);
+}
+
+.site-header.is-scrolled {
+  height: 82px !important;
+  background: rgba(247,243,235,.94) !important;
+  border-bottom-color: rgba(24,55,45,.14) !important;
+}
+
+body:not(.flow-open) {
+  padding-top: 82px;
+}
+
+/* The quiz/centered eyebrow gets the same brass rule on both sides. */
+.centered .eyebrow,
+.flow-body .eyebrow,
+.flow-panel .eyebrow,
+.quiz-shell .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.centered .eyebrow::before,
+.flow-body .eyebrow::before,
+.flow-panel .eyebrow::before,
+.quiz-shell .eyebrow::before,
+.centered .eyebrow::after,
+.flow-body .eyebrow::after,
+.flow-panel .eyebrow::after,
+.quiz-shell .eyebrow::after {
+  content: '';
+  flex: 0 0 30px;
+  width: 30px;
+  height: 1px;
+  background: var(--brass);
+}
+
+@media (max-width: 760px) {
+  .site-header,
+  .site-header.is-scrolled {
+    height: 76px !important;
+  }
+
+  body:not(.flow-open) {
+    padding-top: 76px;
+  }
+
+  .centered .eyebrow::before,
+  .flow-body .eyebrow::before,
+  .flow-panel .eyebrow::before,
+  .quiz-shell .eyebrow::before,
+  .centered .eyebrow::after,
+  .flow-body .eyebrow::after,
+  .flow-panel .eyebrow::after,
+  .quiz-shell .eyebrow::after {
+    flex-basis: 22px;
+    width: 22px;
+  }
+}
