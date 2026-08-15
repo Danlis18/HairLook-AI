@@ -70,4 +70,11 @@
     script.dataset.quizUiFix='true';
     document.head.appendChild(script);
   }
+
+  if(location.pathname==='/' && !document.querySelector('script[data-multi-select-polish]')){
+    const script=document.createElement('script');
+    script.src='/multi-select-polish.js';
+    script.dataset.multiSelectPolish='true';
+    document.head.appendChild(script);
+  }
 })();
