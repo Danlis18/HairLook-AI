@@ -58,8 +58,6 @@ app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/admin', adminRoutes);
 
-// Customer emails use the clean /auth/magic URL. The actual handler lives under
-// /api/auth/magic, so proxy the original token/query there instead of letting it hit 404.
 app.get('/auth/magic', (req, res) => {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(req.query || {})) {
@@ -102,6 +100,7 @@ app.use(express.static(path.join(root, 'public'), {
 const page = name => (req, res) => res.sendFile(path.join(root, 'public', name));
 app.get('/', page('index.html'));
 app.get('/product', page('product.html'));
+app.get('/price', page('price.html'));
 app.get('/personal-plan', page('personal-plan.html'));
 app.get('/dashboard', page('dashboard.html'));
 app.get('/signin', page('signin.html'));
@@ -126,5 +125,5 @@ app.use((error, req, res, next) => {
 
 const server = app.listen(config.port, () => log.info('server_started', { port: config.port, appUrl: config.appUrl, demoMode: config.demoMode }));
 const controller = new AbortController();
-if (config.demoMode) startWorker({ signal: controller.signal }).catch(error => log.error('demo_worker_crash', { error: error.message }));
+if (config.demoMode) startWorker({ signal: controller.signal }).catch(error => log.error('demo_worker_crash', { error:error.message }));
 for (const sig of ['SIGINT','SIGTERM']) process.on(sig, () => { controller.abort(); server.close(() => process.exit(0)); });
