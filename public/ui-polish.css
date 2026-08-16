@@ -55,7 +55,6 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
 }
 .photo-tips-grid .tip-img img { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 50% !important; }
 .photo-tips-grid .tip-img .tip-badge { right: 8px !important; top: 8px !important; }
-/* "Evite" examples have no outer ring at all. */
 .photo-tips-grid > :nth-child(2) .tip-img {
   border: 0 !important;
   box-shadow: none !important;
@@ -74,8 +73,23 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
   .site-header,.site-header.is-scrolled { height: 76px !important; }
   body:not(.flow-open) { padding-top: 76px; }
 
-  /* Mobile hero: large editorial title, edge-to-edge, with the green phrase kept on one line. */
   .hero-copy { text-align: center !important; }
+  .hero-copy .eyebrow {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+  .hero-copy .eyebrow::before,
+  .hero-copy .eyebrow::after {
+    content: '' !important;
+    display: block !important;
+    flex: 0 0 30px !important;
+    width: 30px !important;
+    height: 1px !important;
+    background: var(--brass) !important;
+  }
   .hero-title {
     width: 100% !important;
     max-width: none !important;
@@ -131,6 +145,9 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
 }
 
 @media (max-width: 420px) {
+  .hero-copy .eyebrow { gap: 12px !important; }
+  .hero-copy .eyebrow::before,
+  .hero-copy .eyebrow::after { flex-basis: 24px !important; width: 24px !important; }
   .hero-title {
     font-size: clamp(46px, 12.8vw, 54px) !important;
     letter-spacing: -.058em !important;
