@@ -75,6 +75,36 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
   .centered .eyebrow::before,.flow-body .eyebrow::before,.flow-panel .eyebrow::before,.quiz-shell .eyebrow::before,
   .centered .eyebrow::after,.flow-body .eyebrow::after,.flow-panel .eyebrow::after,.quiz-shell .eyebrow::after { flex-basis: 22px; width: 22px; }
 
+  /* Mobile how-it-works: one full-width card per row. */
+  #how-it-works .steps-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  #how-it-works .step-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 22px 20px !important;
+    border-radius: 22px !important;
+  }
+  #how-it-works .step-card > div:first-child {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+    margin-bottom: 16px !important;
+  }
+  #how-it-works .step-card h3 {
+    font-size: 22px !important;
+    line-height: 1.15 !important;
+    margin-bottom: 8px !important;
+  }
+  #how-it-works .step-card p {
+    font-size: 15px !important;
+    line-height: 1.55 !important;
+    margin: 0 !important;
+  }
+
   /* Mobile style profile: compact, balanced and consistently centered. */
   .consultation-grid { grid-template-columns: 1fr !important; gap: 30px !important; }
   .consultation-visual {
