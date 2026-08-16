@@ -1,0 +1,55 @@
+/* Keep the photo tips overlay above the fixed site/quiz headers and always closable. */
+.photo-tips-modal {
+  z-index: 5000 !important;
+}
+
+.tips-modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--ivory);
+  padding-bottom: 12px;
+}
+
+.tips-modal-close {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  position: relative;
+  z-index: 4;
+}
+
+@media (max-width: 760px) {
+  .photo-tips-modal {
+    place-items: center !important;
+    align-items: center !important;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important;
+    overflow: hidden;
+  }
+
+  .tips-modal-card {
+    width: 100% !important;
+    max-height: calc(100dvh - max(24px, env(safe-area-inset-top) + env(safe-area-inset-bottom))) !important;
+    border-radius: 24px !important;
+    padding: 20px 18px 24px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tips-modal-head {
+    margin: -4px 0 14px;
+    padding: 4px 0 12px;
+  }
+
+  .tips-modal-head h3 {
+    font-size: 32px !important;
+  }
+
+  .tips-modal-close {
+    width: 46px !important;
+    height: 46px !important;
+    flex-basis: 46px !important;
+    background: var(--ivory) !important;
+  }
+}
