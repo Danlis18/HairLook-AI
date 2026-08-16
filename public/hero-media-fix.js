@@ -176,6 +176,28 @@
     lines.forEach((el, i) => { if (texts[i]) el.textContent = texts[i]; });
   }
 
+  // Keep the Photo tips modal visually identical to the examples shown on the homepage.
+  const modalGoodImages = document.querySelectorAll('#photoTipsModal .tip-panel:not(.bad) .tip-img img');
+  if (modalGoodImages[0]) {
+    modalGoodImages[0].src = premiumImages[2];
+    modalGoodImages[0].alt = 'Exemplo de retrato frontal nítido';
+    modalGoodImages[0].style.objectPosition = 'center 35%';
+  }
+  if (modalGoodImages[1]) {
+    modalGoodImages[1].src = premiumImages[4];
+    modalGoodImages[1].alt = 'Segundo exemplo de retrato frontal nítido';
+    modalGoodImages[1].style.objectPosition = 'center 28%';
+  }
+  const homepageBadImages = [...document.querySelectorAll('.photo-tips-grid .tip-panel.bad .tip-img img')];
+  const modalBadImages = [...document.querySelectorAll('#photoTipsModal .tip-panel.bad .tip-img img')];
+  modalBadImages.forEach((img, i) => {
+    if (homepageBadImages[i]) {
+      img.src = homepageBadImages[i].src;
+      img.alt = homepageBadImages[i].alt;
+      img.style.objectPosition = homepageBadImages[i].style.objectPosition || 'center';
+    }
+  });
+
   const faq = document.querySelector('#faq');
   if (faq) {
     const eyebrow = faq.querySelector('.eyebrow');
