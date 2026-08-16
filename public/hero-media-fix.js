@@ -153,9 +153,9 @@
     goodTipImages[0].style.objectPosition = 'center 35%';
   }
   if (goodTipImages[1]) {
-    goodTipImages[1].src = premiumImages[0];
+    goodTipImages[1].src = '/media/18429-preview-825187553872-2026-04-09_22_01_05.avif';
     goodTipImages[1].alt = 'Segundo exemplo de retrato frontal nítido';
-    goodTipImages[1].style.objectPosition = 'center 30%';
+    goodTipImages[1].style.objectPosition = 'center 28%';
   }
 
   const goodTipPanel = document.querySelector('.tip-panel:not(.bad)');
