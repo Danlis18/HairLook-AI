@@ -39,7 +39,6 @@ track('landing_view', { path: location.pathname, ...utm });
 
 $('[data-year]') && ($('[data-year]').textContent = new Date().getFullYear());
 
-// Header and reveal motion.
 const header = $('#siteHeader');
 const onScroll = () => header?.classList.toggle('is-scrolled', scrollY > 18);
 onScroll(); addEventListener('scroll', onScroll, { passive:true });
@@ -48,7 +47,6 @@ const revealObserver = new IntersectionObserver(entries => entries.forEach(entry
 }), { threshold:.12, rootMargin:'0px 0px -35px 0px' });
 $$('.reveal').forEach(el => revealObserver.observe(el));
 
-// Accessible before/after comparison: drag is optional; buttons provide alternatives.
 const range = $('#comparisonRange'), after = $('#comparisonAfter'), divider = $('#comparisonDivider'), handle = $('#comparisonHandle');
 function setComparison(value) {
   const n = Math.max(0, Math.min(100, Number(value)));
@@ -60,7 +58,6 @@ function setComparison(value) {
 range?.addEventListener('input', e => setComparison(e.target.value));
 $$('[data-compare]').forEach(btn => btn.addEventListener('click', () => setComparison(btn.dataset.compare)));
 
-// Lazy-load the long reference demo video only when asked for / near viewport.
 const demoVideo = $('#demoVideo'), videoPlay = $('#videoPlay');
 let videoLoaded = false;
 function loadVideo() {
@@ -215,7 +212,7 @@ async function handlePhoto(file){
     const dims=await new Promise((resolve,reject)=>{img.onload=()=>resolve([img.naturalWidth,img.naturalHeight]);img.onerror=reject;img.src=objectUrl;});
     URL.revokeObjectURL(objectUrl);
     if(dims[0]<400||dims[1]<400){error.textContent='This image is too small. Please choose at least 400 × 400 px.';return;}
-  } catch { /* HEIC may not decode in browser; server performs authoritative validation. */ }
+  } catch { }
   photoFile=file; showUpload(); nextBtn.disabled=false;
 }
 function setPreview(file){const img=$('#photoPreview',flowContent); if(!img)return; const url=URL.createObjectURL(file); img.onload=()=>URL.revokeObjectURL(url); img.src=url;}
@@ -235,7 +232,7 @@ function typoHint(value){
 function showEmail(){
   if(!photoFile && !leadCreated)return;
   phase='email'; updateProgress(); flowFooter.style.display='flex'; backBtn.style.visibility='visible'; nextBtn.hidden=false; nextBtn.textContent=leadCreated?'Send new code →':'Continue →'; nextBtn.disabled=false;
-  flowContent.innerHTML=`<section class="email-card quiz-stage"><div class="eyebrow" style="justify-content:center;display:flex">Private delivery</div><h2>${leadCreated?'Update your email':'Where should we send your results?'}</h2><p>${leadCreated?'We will send a new verification code to this address.':'We use your email for secure access to this hairstyle collection and order-related messages.'}</p><label class="field-label" for="leadEmail">Email address</label><input class="text-input" id="leadEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" maxlength="254" value="${esc(leadEmail)}"><div class="typo-hint" id="typoHint"></div>${leadCreated?'':`<label class="consent"><input id="consent" type="checkbox" ${leadEmail?'checked':''}><span>I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a>. I understand my photo will be privately processed and temporarily stored to create hairstyle results.</span></label>`}<div class="form-error" id="emailError" role="alert"></div></section>`;
+  flowContent.innerHTML=`<section class="email-card quiz-stage"><div class="eyebrow" style="justify-content:center;display:flex">Private delivery</div><h2>${leadCreated?'Update your email':'Where should we send your results?'}</h2><p>${leadCreated?'We will send a new verification code to this address.':'We use your email for secure access to this hairstyle collection and order-related messages.'}</p><label class="field-label" for="leadEmail">Email address</label><input class="text-input" id="leadEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" maxlength="254" value="${esc(leadEmail)}"><div class="typo-hint" id="typoHint"></div>${leadCreated?'':`<label class="consent"><input id="consent" type="checkbox" ${leadEmail?'checked':''}><span>Concordo com os <a href="/terms" target="_blank">Termos</a> e a <a href="/privacy" target="_blank">Política de Privacidade</a>. Entendo que minha foto será processada de forma privada e armazenada temporariamente para criar os resultados dos penteados.</span></label>`}<div class="form-error" id="emailError" role="alert"></div></section>`;
   const input=$('#leadEmail',flowContent);
   input.addEventListener('input',()=>{ $('#typoHint',flowContent).textContent=typoHint(input.value); });
   track('email_step_view');
