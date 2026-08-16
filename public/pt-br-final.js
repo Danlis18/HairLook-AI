@@ -8,6 +8,13 @@
     link.dataset.uiPolish='true';
     document.head.appendChild(link);
   }
+  if(!document.querySelector('link[data-mobile-modal-fix]')){
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='/mobile-modal-fix.css';
+    link.dataset.mobileModalFix='true';
+    document.head.appendChild(link);
+  }
 
   const SUPPORT_EMAIL='support@mail.premium-hairstyles.com';
   const current=36.49, compare=129.90, saving=compare-current;
