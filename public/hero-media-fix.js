@@ -91,6 +91,27 @@
       object-fit: cover;
       object-position: center;
     }
+    .face-shape-visual.face-photo-visual {
+      position: relative !important;
+      display: block !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      background: #dfe8e1 !important;
+      aspect-ratio: 1 / 1 !important;
+    }
+    .face-photo-visual .face-profile-photo {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      object-position: center 38% !important;
+    }
+    .face-photo-visual::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 68%, rgba(19,37,31,.08));
+      pointer-events: none;
+    }
     @media (min-width: 1021px) {
       .hero {
         min-height: 760px !important;
@@ -220,9 +241,26 @@
     consultation.style.objectPosition = 'center';
   }
 
-  // Use the newly supplied Video-009.mp4 in the "See the experience" section.
-  // Keep the existing play-button behavior, but remove the old poster so the
-  // previous stock frame never flashes before playback.
+  // Use a clean portrait in this block with no artificial face contour overlay.
+  const faceVisual = document.querySelector('.face-shape-visual');
+  if (faceVisual) {
+    faceVisual.classList.add('face-photo-visual');
+    faceVisual.innerHTML = `<img class="face-profile-photo" src="/media/1.png" alt="Premium hairstyle portrait example" loading="lazy">`;
+  }
+
+  // Replace the old bun portrait used in the green checked photo examples.
+  const goodTipImages = document.querySelectorAll('.tip-panel:not(.bad) .tip-img img');
+  if (goodTipImages[0]) {
+    goodTipImages[0].src = premiumImages[2];
+    goodTipImages[0].alt = 'Clear front-facing hairstyle portrait example';
+    goodTipImages[0].style.objectPosition = 'center 35%';
+  }
+  if (goodTipImages[1]) {
+    goodTipImages[1].src = premiumImages[3];
+    goodTipImages[1].alt = 'Second clear hairstyle portrait example';
+    goodTipImages[1].style.objectPosition = 'center 38%';
+  }
+
   const demoVideo = document.querySelector('#demoVideo');
   if (demoVideo) {
     demoVideo.removeAttribute('poster');

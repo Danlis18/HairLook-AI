@@ -19,17 +19,13 @@ export const config = Object.freeze({
   demoMode: bool(process.env.DEMO_MODE, false),
   trustProxy: integer(process.env.TRUST_PROXY, 1),
 
-  // Active storefront is Brazil/pt-BR. The previous English/USD version is
-  // preserved on the `english-usd-snapshot` branch for future language routing.
   siteLocale: activeLocale,
   siteCurrency: isBrazilStorefront ? 'BRL' : 'USD',
   productName: process.env.PRODUCT_NAME || 'PremiumHairstyles AI',
-  supportEmail: process.env.SUPPORT_EMAIL || 'support@example.com',
+  supportEmail: process.env.SUPPORT_EMAIL || 'support@mail.premium-hairstyles.com',
   supportPhone: process.env.SUPPORT_PHONE || '',
   legalBusinessName: process.env.LEGAL_BUSINESS_NAME || 'PremiumHairstyles AI',
   legalBusinessAddress: process.env.LEGAL_BUSINESS_ADDRESS || '',
-  // `priceDisplayUsd` remains for backward compatibility with existing routes.
-  // On the active pt-BR storefront it intentionally contains the BRL amount.
   priceDisplayUsd: isBrazilStorefront ? brlPrice : usdPrice,
   priceDisplayBrl: brlPrice,
   priceDisplayUsdSaved: usdPrice,
@@ -46,8 +42,6 @@ export const config = Object.freeze({
   paddleEnvironment: process.env.PADDLE_ENVIRONMENT || 'sandbox',
   paddleApiKey: process.env.PADDLE_API_KEY || '',
   paddleClientToken: process.env.PADDLE_CLIENT_TOKEN || '',
-  // Existing routes read paddlePriceId. For pt-BR it resolves only to the
-  // dedicated BRL Paddle price; we never silently fall back to a USD price.
   paddlePriceId: isBrazilStorefront ? brlPaddlePrice : usdPaddlePrice,
   paddlePriceIdUsd: usdPaddlePrice,
   paddlePriceIdBr: brlPaddlePrice,
@@ -61,7 +55,7 @@ export const config = Object.freeze({
   workerPollMs: integer(process.env.GENERATION_POLL_INTERVAL_MS, 2500),
 
   resendApiKey: process.env.RESEND_API_KEY || '',
-  emailFrom: process.env.EMAIL_FROM || 'PremiumHairstyles AI <results@example.com>',
+  emailFrom: process.env.EMAIL_FROM || 'PremiumHairstyles AI <no-reply@mail.premium-hairstyles.com>',
 
   adminEmails: list(process.env.ADMIN_EMAILS),
   adminPassword: process.env.ADMIN_PASSWORD || '',
@@ -102,8 +96,6 @@ export function assertProductionConfig() {
     ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
     ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
   ];
-  // Missing BRL price must not take the whole application down. Checkout will
-  // stay disabled until PADDLE_PRICE_ID_BR is supplied in Railway.
   if (!isBrazilStorefront) required.push(['PADDLE_PRICE_ID', config.paddlePriceId]);
   if (config.paymentProvider !== 'paddle') required.push(['PAYMENT_PROVIDER must be paddle', config.paymentProvider === 'paddle' ? 'ok' : '']);
   if (!['sandbox','production'].includes(config.paddleEnvironment)) required.push(['PADDLE_ENVIRONMENT must be sandbox or production', '']);
