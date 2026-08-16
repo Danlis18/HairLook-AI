@@ -97,6 +97,17 @@
     document.querySelectorAll('.sale-current-line .price').forEach(el=>el.innerHTML='R$ <span data-price>36,49</span>');
   };
 
+  const applyPhotoExamples=()=>{
+    document.querySelectorAll('img[src$="/upload-good-1.png"],img[src$="upload-good-1.png"]').forEach(img=>{
+      img.src='/media/1.png';
+      img.alt='Exemplo de foto nítida para penteados';
+    });
+    document.querySelectorAll('img[src$="/upload-good-2.png"],img[src$="upload-good-2.png"]').forEach(img=>{
+      img.src='/media/2%20(2).png';
+      img.alt='Segundo exemplo de foto nítida para penteados';
+    });
+  };
+
   const removeHeroTrustExtras=()=>{const items=document.querySelectorAll('.hero-trust .trust-item');[items[1],items[2]].forEach(el=>el?.remove());};
   const applySupportEmail=()=>{
     const supportCol=[...document.querySelectorAll('.footer-col')].find(col=>{const title=col.querySelector('strong')?.textContent.trim().toLowerCase();return title==='support'||title==='suporte';});
@@ -104,10 +115,10 @@
     document.querySelectorAll('a[href^="mailto:"]').forEach(link=>{if(/support@example\.com|results@example\.com/i.test(link.getAttribute('href')||'')){link.href=`mailto:${SUPPORT_EMAIL}`;link.textContent=SUPPORT_EMAIL;}});
   };
 
-  translateOnce();applyPrice();removeHeroTrustExtras();applySupportEmail();
-  setTimeout(translateOnce,250);setTimeout(translateOnce,900);
+  translateOnce();applyPrice();applyPhotoExamples();removeHeroTrustExtras();applySupportEmail();
+  setTimeout(()=>{translateOnce();applyPhotoExamples();},250);setTimeout(()=>{translateOnce();applyPhotoExamples();},900);
 
-  const observer=new MutationObserver(()=>requestAnimationFrame(()=>{applyPrice();removeHeroTrustExtras();applySupportEmail();}));
+  const observer=new MutationObserver(()=>requestAnimationFrame(()=>{applyPrice();applyPhotoExamples();removeHeroTrustExtras();applySupportEmail();}));
   observer.observe(document.body,{childList:true,subtree:true});
 
   if(location.pathname==='/'&&!document.querySelector('script[data-quiz-ui-fix]')){const script=document.createElement('script');script.src='/quiz-ui-fix.js';script.dataset.quizUiFix='true';document.head.appendChild(script);}
