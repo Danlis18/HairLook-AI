@@ -153,27 +153,54 @@
     goodTipImages[0].style.objectPosition = 'center 35%';
   }
   if (goodTipImages[1]) {
-    goodTipImages[1].src = premiumImages[4];
+    goodTipImages[1].src = premiumImages[0];
     goodTipImages[1].alt = 'Segundo exemplo de retrato frontal nítido';
-    goodTipImages[1].style.objectPosition = 'center 35%';
+    goodTipImages[1].style.objectPosition = 'center 30%';
   }
 
-  const goodPanel = document.querySelector('.tip-panel:not(.bad)');
-  if (goodPanel) {
-    const heading = goodPanel.querySelector('h3');
-    if (heading) heading.textContent = 'Para o melhor resultado';
-    const lines = goodPanel.querySelectorAll('.tip-lines span');
-    const copy = ['✓ Rosto claramente visível', '✓ Boa iluminação natural', '✓ Olhando para a câmera'];
-    lines.forEach((line, i) => { if (copy[i]) line.textContent = copy[i]; });
+  const goodTipPanel = document.querySelector('.tip-panel:not(.bad)');
+  if (goodTipPanel) {
+    const title = goodTipPanel.querySelector('h3');
+    if (title) title.textContent = 'Para o melhor resultado';
+    const lines = goodTipPanel.querySelectorAll('.tip-lines span');
+    const texts = ['✓ Rosto claramente visível', '✓ Boa iluminação natural', '✓ Olhando para a câmera'];
+    lines.forEach((el, i) => { if (texts[i]) el.textContent = texts[i]; });
   }
 
-  const badPanel = document.querySelector('.tip-panel.bad');
-  if (badPanel) {
-    const heading = badPanel.querySelector('h3');
-    if (heading) heading.textContent = 'Evite';
-    const lines = badPanel.querySelectorAll('.tip-lines span');
-    const copy = ['× Óculos escuros ou rosto coberto', '× Sombras fortes', '× Imagem muito desfocada ou pequena'];
-    lines.forEach((line, i) => { if (copy[i]) line.textContent = copy[i]; });
+  const badTipPanel = document.querySelector('.tip-panel.bad');
+  if (badTipPanel) {
+    const title = badTipPanel.querySelector('h3');
+    if (title) title.textContent = 'Evite';
+    const lines = badTipPanel.querySelectorAll('.tip-lines span');
+    const texts = ['× Óculos escuros ou rosto coberto', '× Sombras fortes', '× Imagem muito desfocada ou pequena'];
+    lines.forEach((el, i) => { if (texts[i]) el.textContent = texts[i]; });
+  }
+
+  const faq = document.querySelector('#faq');
+  if (faq) {
+    const eyebrow = faq.querySelector('.eyebrow');
+    const title = faq.querySelector('.section-title');
+    if (eyebrow) eyebrow.textContent = 'Dúvidas frequentes';
+    if (title) title.textContent = 'Dúvidas antes de enviar sua foto.';
+
+    const faqCopy = [
+      ['O que exatamente estou comprando?', 'Um serviço digital personalizado de visualização de penteados, oferecido como compra única. Não há assinatura nem renovação automática. Consulte a página de Detalhes do Produto para ver a descrição completa.'],
+      ['As prévias ainda vão parecer comigo?', 'As prévias de penteados são preparadas a partir da sua própria foto e das suas preferências de estilo. Elas servem como visualizações de possíveis direções de penteado e não garantem um resultado idêntico ao de um salão.'],
+      ['O que acontece com a minha foto?', 'Sua foto é armazenada de forma privada pelo tempo necessário para preparar o seu pedido. O acesso é controlado pelo servidor e os arquivos originais privados ficam disponíveis somente para operadores autorizados por meio de links temporários e protegidos.'],
+      ['Por que preciso verificar meu e-mail?', 'Seus resultados são enviados ao e-mail vinculado ao pedido. Você informa o endereço uma única vez e recebe imediatamente um código de 6 dígitos para confirmá-lo antes do pagamento.'],
+      ['Quanto tempo leva para receber meus resultados?', 'Após a confirmação do pagamento, seus resultados personalizados são preparados e enviados ao seu e-mail verificado em até 72 horas.'],
+      ['Quem processa meu pagamento?', 'A Paddle é a Merchant of Record da transação. Ela fornece o checkout seguro e o suporte relacionado ao pagamento; a PremiumHairstyles AI prepara e entrega o serviço de visualização de penteados.'],
+      ['Posso explorar opções para cabelos grisalhos?', 'Sim. A consultoria pode incluir manter os fios grisalhos naturais, suavizar a transição, cobrir os grisalhos ou visualizar diferentes opções de cor.']
+    ];
+
+    faq.querySelectorAll('details').forEach((details, i) => {
+      const item = faqCopy[i];
+      if (!item) return;
+      const summary = details.querySelector('summary');
+      const paragraph = details.querySelector('p');
+      if (summary) summary.textContent = item[0];
+      if (paragraph) paragraph.textContent = item[1];
+    });
   }
 
   const demoVideo = document.querySelector('#demoVideo');
