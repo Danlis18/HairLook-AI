@@ -15,7 +15,7 @@
     video.preload = 'auto';
     video.setAttribute('muted', '');
     video.setAttribute('playsinline', '');
-    video.setAttribute('aria-label', 'PremiumHairstyles AI hairstyle preview video');
+    video.setAttribute('aria-label', 'Vídeo de prévia de penteados da PremiumHairstyles AI');
     const source = document.createElement('source');
     source.src = '/media/Main-Video.mp4';
     source.type = 'video/mp4';
@@ -97,12 +97,12 @@
     '/media/12-42.webp'
   ];
   const labels = [
-    ['Soft Layers', 'Natural · polished'],
-    ['Modern Texture', 'Fresh · dimensional'],
-    ['Elegant Shape', 'Refined · wearable'],
-    ['Soft Movement', 'Light · effortless'],
-    ['Statement Style', 'Bold · premium'],
-    ['Color & Finish', 'Glossy · dimensional']
+    ['Camadas suaves', 'Natural · elegante'],
+    ['Textura moderna', 'Leve · dimensional'],
+    ['Formato elegante', 'Refinado · versátil'],
+    ['Movimento suave', 'Leve · natural'],
+    ['Estilo marcante', 'Ousado · premium'],
+    ['Cor e acabamento', 'Brilho · dimensão']
   ];
 
   const cards = [...document.querySelectorAll('.gallery-scroller .style-card')];
@@ -110,7 +110,7 @@
     const img = card.querySelector('img');
     if (img) {
       img.src = premiumImages[i];
-      img.alt = `${labels[i][0]} hairstyle inspiration`;
+      img.alt = `Inspiração de penteado: ${labels[i][0]}`;
       img.style.objectPosition = 'center';
     }
     const strong = card.querySelector('.style-meta strong');
@@ -122,28 +122,31 @@
   const colorCard = document.querySelector('.gallery-scroller .color-direction-card');
   if (colorCard) {
     colorCard.className = 'style-card';
-    colorCard.innerHTML = `<img src="${premiumImages[4]}" alt="${labels[4][0]} hairstyle inspiration" loading="lazy"><div class="style-meta"><strong>${labels[4][0]}</strong><span>${labels[4][1]}</span></div>`;
+    colorCard.innerHTML = `<img src="${premiumImages[4]}" alt="Inspiração de penteado: ${labels[4][0]}" loading="lazy"><div class="style-meta"><strong>${labels[4][0]}</strong><span>${labels[4][1]}</span></div>`;
   }
   const scroller = document.querySelector('.gallery-scroller');
   if (scroller && !scroller.querySelector('[data-premium-extra]')) {
     const extra = document.createElement('article');
     extra.className = 'style-card';
     extra.dataset.premiumExtra = 'true';
-    extra.innerHTML = `<img src="${premiumImages[5]}" alt="${labels[5][0]} hairstyle inspiration" loading="lazy"><div class="style-meta"><strong>${labels[5][0]}</strong><span>${labels[5][1]}</span></div>`;
+    extra.innerHTML = `<img src="${premiumImages[5]}" alt="Inspiração de penteado: ${labels[5][0]}" loading="lazy"><div class="style-meta"><strong>${labels[5][0]}</strong><span>${labels[5][1]}</span></div>`;
     scroller.appendChild(extra);
   }
+
+  const disclosure = document.querySelector('.gallery-disclosure');
+  if (disclosure) disclosure.textContent = 'As inspirações de estilo são ilustrativas. Suas prévias pagas de penteados são preparadas a partir da sua própria foto enviada e das preferências selecionadas.';
 
   const consultation = document.querySelector('.consultation-photo');
   if (consultation) {
     consultation.src = premiumImages[5];
-    consultation.alt = 'Premium hairstyle consultation inspiration portrait';
+    consultation.alt = 'Retrato de inspiração para consultoria de penteados';
     consultation.style.objectPosition = 'center';
   }
 
   const faceVisual = document.querySelector('.face-shape-visual');
   if (faceVisual) {
     faceVisual.classList.add('face-photo-visual');
-    faceVisual.innerHTML = `<img class="face-profile-photo" src="${premiumImages[2]}" alt="Premium hairstyle portrait example" loading="lazy">`;
+    faceVisual.innerHTML = `<img class="face-profile-photo" src="${premiumImages[2]}" alt="Exemplo de retrato para inspiração de penteado" loading="lazy">`;
   }
 
   const goodTipImages = document.querySelectorAll('.tip-panel:not(.bad) .tip-img img');
@@ -176,7 +179,6 @@
     lines.forEach((el, i) => { if (texts[i]) el.textContent = texts[i]; });
   }
 
-  // Keep the Photo tips modal visually identical to the examples shown on the homepage.
   const modalGoodImages = document.querySelectorAll('#photoTipsModal .tip-panel:not(.bad) .tip-img img');
   if (modalGoodImages[0]) {
     modalGoodImages[0].src = premiumImages[2];
