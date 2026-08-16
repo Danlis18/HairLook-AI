@@ -149,13 +149,31 @@
   const goodTipImages = document.querySelectorAll('.tip-panel:not(.bad) .tip-img img');
   if (goodTipImages[0]) {
     goodTipImages[0].src = premiumImages[2];
-    goodTipImages[0].alt = 'Clear front-facing hairstyle portrait example';
+    goodTipImages[0].alt = 'Exemplo de retrato frontal nítido';
     goodTipImages[0].style.objectPosition = 'center 35%';
   }
   if (goodTipImages[1]) {
-    goodTipImages[1].src = premiumImages[3];
-    goodTipImages[1].alt = 'Second clear hairstyle portrait example';
-    goodTipImages[1].style.objectPosition = 'center 38%';
+    goodTipImages[1].src = premiumImages[4];
+    goodTipImages[1].alt = 'Segundo exemplo de retrato frontal nítido';
+    goodTipImages[1].style.objectPosition = 'center 35%';
+  }
+
+  const goodPanel = document.querySelector('.tip-panel:not(.bad)');
+  if (goodPanel) {
+    const heading = goodPanel.querySelector('h3');
+    if (heading) heading.textContent = 'Para o melhor resultado';
+    const lines = goodPanel.querySelectorAll('.tip-lines span');
+    const copy = ['✓ Rosto claramente visível', '✓ Boa iluminação natural', '✓ Olhando para a câmera'];
+    lines.forEach((line, i) => { if (copy[i]) line.textContent = copy[i]; });
+  }
+
+  const badPanel = document.querySelector('.tip-panel.bad');
+  if (badPanel) {
+    const heading = badPanel.querySelector('h3');
+    if (heading) heading.textContent = 'Evite';
+    const lines = badPanel.querySelectorAll('.tip-lines span');
+    const copy = ['× Óculos escuros ou rosto coberto', '× Sombras fortes', '× Imagem muito desfocada ou pequena'];
+    lines.forEach((line, i) => { if (copy[i]) line.textContent = copy[i]; });
   }
 
   const demoVideo = document.querySelector('#demoVideo');
