@@ -55,6 +55,11 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
 }
 .photo-tips-grid .tip-img img { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 50% !important; }
 .photo-tips-grid .tip-img .tip-badge { right: 8px !important; top: 8px !important; }
+/* "Evite" examples use only the warning/red outline — never the green success ring. */
+.photo-tips-grid > :nth-child(2) .tip-img {
+  border-color: #b84f45 !important;
+  box-shadow: 0 8px 24px rgba(159,78,67,.12) !important;
+}
 
 .centered .eyebrow,
 .flow-body .eyebrow,
@@ -75,89 +80,32 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
   .centered .eyebrow::before,.flow-body .eyebrow::before,.flow-panel .eyebrow::before,.quiz-shell .eyebrow::before,
   .centered .eyebrow::after,.flow-body .eyebrow::after,.flow-panel .eyebrow::after,.quiz-shell .eyebrow::after { flex-basis: 22px; width: 22px; }
 
-  /* Reduce the oversized mobile gap between FAQ and the final green CTA. */
-  #faq.section { padding-bottom: 28px !important; }
-  #faq + .section-tight { padding-top: 24px !important; }
+  #how-it-works .steps-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+  #how-it-works .step-card { width: 100% !important; min-width: 0 !important; min-height: 0 !important; padding: 22px 20px !important; border-radius: 22px !important; }
+  #how-it-works .step-card > div:first-child { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 16px !important; margin-bottom: 16px !important; }
+  #how-it-works .step-card h3 { font-size: 22px !important; line-height: 1.15 !important; margin-bottom: 8px !important; }
+  #how-it-works .step-card p { font-size: 15px !important; line-height: 1.55 !important; margin: 0 !important; }
 
-  /* Mobile how-it-works: one full-width card per row. */
-  #how-it-works .steps-grid {
-    grid-template-columns: 1fr !important;
-    gap: 14px !important;
-  }
-  #how-it-works .step-card {
-    width: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    padding: 22px 20px !important;
-    border-radius: 22px !important;
-  }
-  #how-it-works .step-card > div:first-child {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 16px !important;
-    margin-bottom: 16px !important;
-  }
-  #how-it-works .step-card h3 {
-    font-size: 22px !important;
-    line-height: 1.15 !important;
-    margin-bottom: 8px !important;
-  }
-  #how-it-works .step-card p {
-    font-size: 15px !important;
-    line-height: 1.55 !important;
-    margin: 0 !important;
-  }
-
-  /* Mobile style profile: compact, balanced and consistently centered. */
   .consultation-grid { grid-template-columns: 1fr !important; gap: 30px !important; }
-  .consultation-visual {
-    min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 16px !important;
-  }
-  .consultation-photo {
-    width: min(100%, 430px) !important;
-    height: auto !important;
-    aspect-ratio: 4 / 5 !important;
-    object-fit: cover !important;
-    margin: 0 auto !important;
-  }
-  .profile-card {
-    position: relative !important;
-    right: auto !important;
-    bottom: auto !important;
-    width: min(100%, 430px) !important;
-    margin: -48px auto 0 !important;
-    padding: 20px 18px !important;
-    border-radius: 22px !important;
-    text-align: center !important;
-  }
-  .profile-card h3 {
-    margin: 0 0 12px !important;
-    font-size: 28px !important;
-    line-height: 1.05 !important;
-    text-align: center !important;
-  }
-  .profile-row {
-    display: grid !important;
-    grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
-    align-items: center !important;
-    gap: 12px !important;
-    padding: 12px 4px !important;
-    font-size: 14px !important;
-    line-height: 1.35 !important;
-    text-align: center !important;
-  }
+  .consultation-visual { min-height: 0 !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 16px !important; }
+  .consultation-photo { width: min(100%, 430px) !important; height: auto !important; aspect-ratio: 4 / 5 !important; object-fit: cover !important; margin: 0 auto !important; }
+  .profile-card { position: relative !important; right: auto !important; bottom: auto !important; width: min(100%, 430px) !important; margin: -48px auto 0 !important; padding: 20px 18px !important; border-radius: 22px !important; text-align: center !important; }
+  .profile-card h3 { margin: 0 0 12px !important; font-size: 28px !important; line-height: 1.05 !important; text-align: center !important; }
+  .profile-row { display: grid !important; grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; align-items: center !important; gap: 12px !important; padding: 12px 4px !important; font-size: 14px !important; line-height: 1.35 !important; text-align: center !important; }
   .profile-row > * { min-width: 0 !important; text-align: center !important; overflow-wrap: anywhere; }
   .profile-row span:first-child { justify-self: stretch !important; }
   .profile-row strong,.profile-row b,.profile-row span:last-child { justify-self: stretch !important; }
+
+  /* Tighten the transition from FAQ into the final CTA on phones. */
+  .faq-section { padding-bottom: 34px !important; }
+  .cta-section { padding-top: 20px !important; }
+  .faq-section + .cta-section { margin-top: 0 !important; }
 }
 
 @media (max-width: 420px) {
   .profile-card { width: calc(100% - 16px) !important; padding: 18px 14px !important; }
   .profile-card h3 { font-size: 26px !important; }
   .profile-row { grid-template-columns: 44% 56% !important; gap: 8px !important; font-size: 13px !important; }
+  .faq-section { padding-bottom: 26px !important; }
+  .cta-section { padding-top: 14px !important; }
 }
