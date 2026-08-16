@@ -75,6 +75,10 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
   .centered .eyebrow::before,.flow-body .eyebrow::before,.flow-panel .eyebrow::before,.quiz-shell .eyebrow::before,
   .centered .eyebrow::after,.flow-body .eyebrow::after,.flow-panel .eyebrow::after,.quiz-shell .eyebrow::after { flex-basis: 22px; width: 22px; }
 
+  /* Reduce the oversized mobile gap between FAQ and the final green CTA. */
+  #faq.section { padding-bottom: 28px !important; }
+  #faq + .section-tight { padding-top: 24px !important; }
+
   /* Mobile how-it-works: one full-width card per row. */
   #how-it-works .steps-grid {
     grid-template-columns: 1fr !important;
