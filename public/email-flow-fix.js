@@ -213,3 +213,15 @@ if(flowRoot)emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
     originalGoBack();
   };
 })();
+
+// Safe one-time localization each time the email step is rendered. No MutationObserver loop.
+(function localizeEmailStepSafely(){
+  const originalShowEmail=showEmail;
+  showEmail=function(){
+    originalShowEmail();
+    const consent=document.querySelector('#flowContent .consent span');
+    if(consent){
+      consent.innerHTML='Concordo com os <a href="/terms" target="_blank">Termos</a> e a <a href="/privacy" target="_blank">Política de Privacidade</a>. Entendo que minha foto será processada de forma privada e armazenada temporariamente para criar os resultados dos penteados.';
+    }
+  };
+})();
