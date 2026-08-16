@@ -74,18 +74,23 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
   .site-header,.site-header.is-scrolled { height: 76px !important; }
   body:not(.flow-open) { padding-top: 76px; }
 
-  /* Mobile hero: keep the green phrase together and avoid orphaned last words. */
+  /* Mobile hero: large editorial title, edge-to-edge, with the green phrase kept on one line. */
   .hero-copy { text-align: center !important; }
   .hero-title {
-    font-size: clamp(44px, 10.8vw, 56px) !important;
-    line-height: .9 !important;
-    letter-spacing: -.045em !important;
+    width: 100% !important;
+    max-width: none !important;
+    font-size: clamp(48px, 12vw, 62px) !important;
+    line-height: .88 !important;
+    letter-spacing: -.052em !important;
   }
   .hero-title em {
-    display: inline-block !important;
+    display: block !important;
+    width: 100% !important;
     white-space: nowrap !important;
-    font-size: .76em !important;
-    line-height: 1 !important;
+    font-size: clamp(31px, 8.6vw, 42px) !important;
+    line-height: 1.02 !important;
+    letter-spacing: -.055em !important;
+    margin-top: 8px !important;
   }
   .hero-lead {
     max-width: 100% !important;
@@ -126,8 +131,14 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
 }
 
 @media (max-width: 420px) {
-  .hero-title { font-size: clamp(41px, 11vw, 49px) !important; }
-  .hero-title em { font-size: .72em !important; }
+  .hero-title {
+    font-size: clamp(46px, 12.8vw, 54px) !important;
+    letter-spacing: -.058em !important;
+  }
+  .hero-title em {
+    font-size: clamp(30px, 8.55vw, 36px) !important;
+    letter-spacing: -.06em !important;
+  }
   .hero-lead { font-size: 14px !important; line-height: 1.5 !important; }
   .profile-card { width: calc(100% - 16px) !important; padding: 18px 14px !important; }
   .profile-card h3 { font-size: 26px !important; }
