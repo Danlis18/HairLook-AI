@@ -80,6 +80,28 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
   box-shadow: none !important;
 }
 
+/* Photo tips must always sit above the persistent header. */
+.photo-tips-modal {
+  z-index: 2200 !important;
+  overscroll-behavior: contain;
+}
+.tips-modal-card {
+  position: relative;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.tips-modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--ivory);
+}
+.tips-modal-close {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 6;
+}
+
 .centered .eyebrow,
 .flow-body .eyebrow,
 .flow-panel .eyebrow,
@@ -99,6 +121,43 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
   .site-header .logo-name {
     font-size: clamp(14px, 4.45vw, 19px) !important;
     letter-spacing: -.045em !important;
+  }
+
+  .photo-tips-modal {
+    align-items: stretch !important;
+    padding: 0 !important;
+  }
+  .tips-modal-card {
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    padding: 0 18px calc(24px + env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    background: var(--ivory) !important;
+  }
+  .tips-modal-head {
+    min-height: 82px;
+    margin: 0 -18px 20px;
+    padding: max(14px, env(safe-area-inset-top)) 18px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex !important;
+    align-items: center !important;
+    background: rgba(247,243,235,.97) !important;
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+  .tips-modal-head h3 { font-size: 32px !important; }
+  .tips-modal-close {
+    width: 48px !important;
+    height: 48px !important;
+    display: grid !important;
+    place-items: center !important;
+    background: var(--pearl) !important;
+    box-shadow: 0 6px 18px rgba(24,40,32,.08);
+  }
+  .tips-modal-card .photo-tips-grid {
+    padding-bottom: 12px;
   }
 
   .hero-copy { text-align: center !important; }
