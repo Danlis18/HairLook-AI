@@ -22,6 +22,23 @@
   border-bottom-color: rgba(24,55,45,.14) !important;
 }
 
+/* Brand must always stay in one line, including narrow phones. */
+.site-header .logo {
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+.site-header .logo-mark {
+  flex: 0 0 35px !important;
+}
+.site-header .logo-name {
+  display: block !important;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  line-height: 1 !important;
+}
+
 body:not(.flow-open) { padding-top: 82px; }
 body.flow-open .site-header .header-actions,
 body.flow-open .site-header [data-start-quiz] { display: none !important; }
@@ -75,6 +92,14 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
 @media (max-width: 760px) {
   .site-header,.site-header.is-scrolled { height: 76px !important; }
   body:not(.flow-open) { padding-top: 76px; }
+
+  .site-header .header-inner { gap: 10px !important; }
+  .site-header .logo { gap: 9px !important; }
+  .site-header .logo-mark { flex-basis: 34px !important; width: 34px !important; height: 34px !important; }
+  .site-header .logo-name {
+    font-size: clamp(14px, 4.45vw, 19px) !important;
+    letter-spacing: -.045em !important;
+  }
 
   .hero-copy { text-align: center !important; }
   .hero-copy .eyebrow {
@@ -148,6 +173,10 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
 }
 
 @media (max-width: 420px) {
+  .site-header .logo { gap: 7px !important; }
+  .site-header .logo-mark { flex-basis: 31px !important; width: 31px !important; height: 31px !important; }
+  .site-header .logo-name { font-size: clamp(13px, 4.2vw, 17px) !important; }
+
   .hero-copy .eyebrow { gap: 12px !important; }
   .hero-copy .eyebrow::before,
   .hero-copy .eyebrow::after { flex-basis: 24px !important; width: 24px !important; }
@@ -165,4 +194,9 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
   .profile-row { grid-template-columns: 44% 56% !important; gap: 8px !important; font-size: 13px !important; }
   .faq-section { padding-bottom: 26px !important; }
   .cta-section { padding-top: 14px !important; }
+}
+
+@media (max-width: 350px) {
+  .site-header .logo-name { font-size: 12.5px !important; }
+  .site-header .logo-mark { flex-basis: 29px !important; width: 29px !important; height: 29px !important; }
 }
