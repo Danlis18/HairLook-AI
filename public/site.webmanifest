@@ -1,0 +1,16 @@
+{
+  "name": "PremiumHairstyles AI",
+  "short_name": "PremiumHairstyles",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f3eb",
+  "theme_color": "#15513f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
