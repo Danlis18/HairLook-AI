@@ -26,6 +26,9 @@ body:not(.flow-open) { padding-top: 82px; }
 body.flow-open .site-header .header-actions,
 body.flow-open .site-header [data-start-quiz] { display: none !important; }
 
+/* No text pill over the main hero video. */
+.hero-gallery-main .gallery-badge { display: none !important; }
+
 .face-shape-card {
   width: min(calc(100% - 40px), var(--container)) !important;
   max-width: var(--container) !important;
