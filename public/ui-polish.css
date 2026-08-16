@@ -73,6 +73,29 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
 @media (max-width: 760px) {
   .site-header,.site-header.is-scrolled { height: 76px !important; }
   body:not(.flow-open) { padding-top: 76px; }
+
+  /* Mobile hero: keep the green phrase together and avoid orphaned last words. */
+  .hero-copy { text-align: center !important; }
+  .hero-title {
+    font-size: clamp(44px, 10.8vw, 56px) !important;
+    line-height: .9 !important;
+    letter-spacing: -.045em !important;
+  }
+  .hero-title em {
+    display: inline-block !important;
+    white-space: nowrap !important;
+    font-size: .76em !important;
+    line-height: 1 !important;
+  }
+  .hero-lead {
+    max-width: 100% !important;
+    margin: 24px auto 0 !important;
+    font-size: 15px !important;
+    line-height: 1.55 !important;
+    letter-spacing: -.01em !important;
+    text-wrap: balance;
+  }
+
   .face-shape-card { width: min(calc(100% - 24px), var(--container)) !important; margin-top: 32px !important; }
   .multi-select-grid .multi-select-choice { padding-right: 48px !important; }
   .multi-select-indicator { width: 22px; height: 22px; top: 10px; right: 10px; }
@@ -103,6 +126,9 @@ body.flow-open .site-header [data-start-quiz] { display: none !important; }
 }
 
 @media (max-width: 420px) {
+  .hero-title { font-size: clamp(41px, 11vw, 49px) !important; }
+  .hero-title em { font-size: .72em !important; }
+  .hero-lead { font-size: 14px !important; line-height: 1.5 !important; }
   .profile-card { width: calc(100% - 16px) !important; padding: 18px 14px !important; }
   .profile-card h3 { font-size: 26px !important; }
   .profile-row { grid-template-columns: 44% 56% !important; gap: 8px !important; font-size: 13px !important; }
