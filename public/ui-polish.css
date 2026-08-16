@@ -22,160 +22,108 @@
   border-bottom-color: rgba(24,55,45,.14) !important;
 }
 
-body:not(.flow-open) {
-  padding-top: 82px;
-}
-
-/* The public "Find my style" controls must not stay visible over the active quiz. */
+body:not(.flow-open) { padding-top: 82px; }
 body.flow-open .site-header .header-actions,
-body.flow-open .site-header [data-start-quiz] {
-  display: none !important;
-}
+body.flow-open .site-header [data-start-quiz] { display: none !important; }
 
-/* Match this standalone block to the same 1200px content width as the rest of the site. */
 .face-shape-card {
   width: min(calc(100% - 40px), var(--container)) !important;
   max-width: var(--container) !important;
   margin: 48px auto 0 !important;
 }
 
-/* Make multi-select behavior unmistakable on the priorities question. */
-.multi-select-grid .multi-select-choice {
-  padding-right: 54px !important;
-}
-
-.multi-select-grid .multi-select-choice::after {
-  display: none !important;
-}
-
+.multi-select-grid .multi-select-choice { padding-right: 54px !important; }
+.multi-select-grid .multi-select-choice::after { display: none !important; }
 .multi-select-indicator {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(24,55,45,.38);
-  background: rgba(255,255,255,.72);
-  box-shadow: inset 0 0 0 3px rgba(255,255,255,.72);
+  position: absolute; top: 12px; right: 12px; width: 24px; height: 24px;
+  border-radius: 50%; border: 1.5px solid rgba(24,55,45,.38);
+  background: rgba(255,255,255,.72); box-shadow: inset 0 0 0 3px rgba(255,255,255,.72);
   transition: background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
   pointer-events: none;
 }
-
-.multi-select-choice:hover .multi-select-indicator {
-  border-color: var(--green-3);
-  transform: scale(1.04);
-}
-
-.multi-select-choice.is-selected .multi-select-indicator {
-  background: var(--green);
-  border-color: var(--green);
-  box-shadow: 0 5px 14px rgba(24,55,45,.2);
-}
-
+.multi-select-choice:hover .multi-select-indicator { border-color: var(--green-3); transform: scale(1.04); }
+.multi-select-choice.is-selected .multi-select-indicator { background: var(--green); border-color: var(--green); box-shadow: 0 5px 14px rgba(24,55,45,.2); }
 .multi-select-choice.is-selected .multi-select-indicator::after {
-  content: '✓';
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1;
+  content: '✓'; position: absolute; inset: 0; display: grid; place-items: center;
+  color: #fff; font-size: 13px; font-weight: 800; line-height: 1;
 }
 
-/* Photo guidance: use clean circular portraits with a green outline. */
-.photo-tips-grid .tip-images {
-  align-items: center;
-}
-
+.photo-tips-grid .tip-images { align-items: center; }
 .photo-tips-grid .tip-img {
-  aspect-ratio: 1 / 1 !important;
-  border-radius: 50% !important;
-  overflow: hidden !important;
-  border: 4px solid #2f8f5b !important;
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(24,55,45,.12);
+  aspect-ratio: 1 / 1 !important; border-radius: 50% !important; overflow: hidden !important;
+  border: 4px solid #2f8f5b !important; background: #fff; box-shadow: 0 8px 24px rgba(24,55,45,.12);
 }
+.photo-tips-grid .tip-img img { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: 50% !important; }
+.photo-tips-grid .tip-img .tip-badge { right: 8px !important; top: 8px !important; }
 
-.photo-tips-grid .tip-img img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  border-radius: 50% !important;
-}
-
-.photo-tips-grid .tip-img .tip-badge {
-  right: 8px !important;
-  top: 8px !important;
-}
-
-/* The quiz/centered eyebrow gets the same brass rule on both sides. */
 .centered .eyebrow,
 .flow-body .eyebrow,
 .flow-panel .eyebrow,
-.quiz-shell .eyebrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-}
-
-.centered .eyebrow::before,
-.flow-body .eyebrow::before,
-.flow-panel .eyebrow::before,
-.quiz-shell .eyebrow::before,
-.centered .eyebrow::after,
-.flow-body .eyebrow::after,
-.flow-panel .eyebrow::after,
-.quiz-shell .eyebrow::after {
-  content: '';
-  flex: 0 0 30px;
-  width: 30px;
-  height: 1px;
-  background: var(--brass);
+.quiz-shell .eyebrow { display: inline-flex; align-items: center; justify-content: center; gap: 14px; }
+.centered .eyebrow::before,.flow-body .eyebrow::before,.flow-panel .eyebrow::before,.quiz-shell .eyebrow::before,
+.centered .eyebrow::after,.flow-body .eyebrow::after,.flow-panel .eyebrow::after,.quiz-shell .eyebrow::after {
+  content: ''; flex: 0 0 30px; width: 30px; height: 1px; background: var(--brass);
 }
 
 @media (max-width: 760px) {
-  .site-header,
-  .site-header.is-scrolled {
-    height: 76px !important;
-  }
+  .site-header,.site-header.is-scrolled { height: 76px !important; }
+  body:not(.flow-open) { padding-top: 76px; }
+  .face-shape-card { width: min(calc(100% - 24px), var(--container)) !important; margin-top: 32px !important; }
+  .multi-select-grid .multi-select-choice { padding-right: 48px !important; }
+  .multi-select-indicator { width: 22px; height: 22px; top: 10px; right: 10px; }
+  .photo-tips-grid .tip-img { border-width: 3px !important; }
+  .centered .eyebrow::before,.flow-body .eyebrow::before,.flow-panel .eyebrow::before,.quiz-shell .eyebrow::before,
+  .centered .eyebrow::after,.flow-body .eyebrow::after,.flow-panel .eyebrow::after,.quiz-shell .eyebrow::after { flex-basis: 22px; width: 22px; }
 
-  body:not(.flow-open) {
-    padding-top: 76px;
+  /* Mobile style profile: compact, balanced and consistently centered. */
+  .consultation-grid { grid-template-columns: 1fr !important; gap: 30px !important; }
+  .consultation-visual {
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 16px !important;
   }
+  .consultation-photo {
+    width: min(100%, 430px) !important;
+    height: auto !important;
+    aspect-ratio: 4 / 5 !important;
+    object-fit: cover !important;
+    margin: 0 auto !important;
+  }
+  .profile-card {
+    position: relative !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: min(100%, 430px) !important;
+    margin: -48px auto 0 !important;
+    padding: 20px 18px !important;
+    border-radius: 22px !important;
+    text-align: center !important;
+  }
+  .profile-card h3 {
+    margin: 0 0 12px !important;
+    font-size: 28px !important;
+    line-height: 1.05 !important;
+    text-align: center !important;
+  }
+  .profile-row {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px 4px !important;
+    font-size: 14px !important;
+    line-height: 1.35 !important;
+    text-align: center !important;
+  }
+  .profile-row > * { min-width: 0 !important; text-align: center !important; overflow-wrap: anywhere; }
+  .profile-row span:first-child { justify-self: stretch !important; }
+  .profile-row strong,.profile-row b,.profile-row span:last-child { justify-self: stretch !important; }
+}
 
-  .face-shape-card {
-    width: min(calc(100% - 24px), var(--container)) !important;
-    margin-top: 32px !important;
-  }
-
-  .multi-select-grid .multi-select-choice {
-    padding-right: 48px !important;
-  }
-
-  .multi-select-indicator {
-    width: 22px;
-    height: 22px;
-    top: 10px;
-    right: 10px;
-  }
-
-  .photo-tips-grid .tip-img {
-    border-width: 3px !important;
-  }
-
-  .centered .eyebrow::before,
-  .flow-body .eyebrow::before,
-  .flow-panel .eyebrow::before,
-  .quiz-shell .eyebrow::before,
-  .centered .eyebrow::after,
-  .flow-body .eyebrow::after,
-  .flow-panel .eyebrow::after,
-  .quiz-shell .eyebrow::after {
-    flex-basis: 22px;
-    width: 22px;
-  }
+@media (max-width: 420px) {
+  .profile-card { width: calc(100% - 16px) !important; padding: 18px 14px !important; }
+  .profile-card h3 { font-size: 26px !important; }
+  .profile-row { grid-template-columns: 44% 56% !important; gap: 8px !important; font-size: 13px !important; }
 }
