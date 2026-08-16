@@ -6,30 +6,45 @@ proceedFromEmail = async function proceedFromEmailSingleStep(){
   const error=document.querySelector('#emailError');
   const email=input?.value.trim().toLowerCase();
   if(!/^\S+@\S+\.\S+$/.test(email||'')){
-    if(error)error.textContent='Please enter a valid email address.';
+    if(error)error.textContent='Digite um endereço de e-mail válido.';
     return;
   }
   if(!consent?.checked){
-    if(error)error.textContent='Please review and accept the Terms and Privacy Policy to continue.';
+    if(error)error.textContent='Revise e aceite os Termos e a Política de Privacidade para continuar.';
     return;
   }
   leadEmail=email;
   if(error)error.textContent='';
   const next=document.querySelector('#flowContinue');
-  if(next){next.disabled=true;next.textContent='Sending verification code…';}
+  if(next){next.disabled=true;next.textContent='Enviando código de verificação…';}
   await submitLead();
-  if(next && phase==='email'){next.disabled=false;next.textContent='Send verification code →';}
+  if(next && phase==='email'){next.disabled=false;next.textContent='Enviar código de verificação →';}
 };
+
+function localizeEmailConsent(){
+  const consent=document.querySelector('.consent');
+  if(!consent)return;
+  const span=consent.querySelector('span');
+  if(span){
+    span.innerHTML='Concordo com os <a href="/terms" target="_blank">Termos</a> e a <a href="/privacy" target="_blank">Política de Privacidade</a>. Entendo que minha foto será processada de forma privada e armazenada temporariamente para criar os resultados dos penteados.';
+  }
+  const input=consent.querySelector('#consent');
+  if(input) input.style.display='';
+}
 
 const emailStepObserver=new MutationObserver(()=>{
   const input=document.querySelector('#leadEmail');
   const next=document.querySelector('#flowContinue');
   if(input && next && typeof phase!=='undefined' && phase==='email' && !leadCreated){
-    next.textContent='Send verification code →';
+    next.textContent='Enviar código de verificação →';
   }
+  localizeEmailConsent();
 });
 const flowRoot=document.querySelector('#flowContent');
-if(flowRoot)emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
+if(flowRoot){
+  emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
+  localizeEmailConsent();
+}
 
 // Global storefront polish for the current PremiumHairstyles AI offer.
 (function applyStorefrontOverrides(){
