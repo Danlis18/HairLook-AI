@@ -191,7 +191,16 @@ router.get('/dashboard', noStore, leadSession, async (req,res,next) => { try {
   for (const r of results) if (!r.deleted_at) safe.push({ ...r, url:await signedResultUrl(r.storage_path) });
   const settings = await repo.getSettings();
   const targetCount = Math.min(30, Math.max(1, Number(settings.generation_target_count || config.generationTargetCount)));
-  res.json({ lead:{ id:req.lead.id, email:req.lead.email, paymentStatus:req.lead.payment_status, generationStatus:req.lead.generation_status, profile:{ ageRange:req.lead.age_range, currentLength:req.lead.current_length, desiredLength:req.lead.desired_length, texture:req.lead.texture, currentColor:req.lead.current_color, desiredColors:req.lead.desired_colors, styleGoals:req.lead.style_goals, grayPreference:req.lead.gray_preference } }, targetCount, results:safe });
+  const isPaid = req.lead.payment_status === 'paid';
+  const orderId = String(req.lead.payment_order_id || '').trim();
+  const isCrypto = String(req.lead.payment_provider || '').startsWith('crypto_');
+  const purchase = isPaid && orderId ? {
+    eventId:isCrypto ? `crypto:${orderId}` : `purchase:${orderId}`,
+    orderId,
+    value:isCrypto ? Number(config.cryptoPriceUsdt) : Number(req.lead.payment_amount || config.priceDisplayUsd),
+    currency:isCrypto ? 'USD' : String(req.lead.payment_currency || config.siteCurrency || 'USD').toUpperCase()
+  } : null;
+  res.json({ lead:{ id:req.lead.id, email:req.lead.email, paymentStatus:req.lead.payment_status, generationStatus:req.lead.generation_status, profile:{ ageRange:req.lead.age_range, currentLength:req.lead.current_length, desiredLength:req.lead.desired_length, texture:req.lead.texture, currentColor:req.lead.current_color, desiredColors:req.lead.desired_colors, styleGoals:req.lead.style_goals, grayPreference:req.lead.gray_preference } }, purchase, targetCount, results:safe });
 } catch (e) { next(e); } });
 
 router.get('/results/:id/download', leadSession, async (req,res,next) => { try {

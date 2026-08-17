@@ -1,6 +1,15 @@
 const $=q=>document.querySelector(q);
 let pollTimer=null;
 
+function trackConfirmedPurchase(purchase,attempts=20){
+  if(!purchase)return;
+  if(typeof window.metaTrackPurchase==='function'){
+    window.metaTrackPurchase(purchase).catch(()=>{});
+    return;
+  }
+  if(attempts>0)setTimeout(()=>trackConfirmedPurchase(purchase,attempts-1),100);
+}
+
 function setState({eyebrow,title,message,email='',confirmed=false,error=false}){
   $('#orderEyebrow').textContent=eyebrow;
   $('#orderTitle').textContent=title;
@@ -33,6 +42,7 @@ async function loadStatus(){
         email:lead.email||'',
         confirmed:true
       });
+      trackConfirmedPurchase(data.purchase);
       fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sessionStorage.getItem('hairlook_session_id')||'dashboard',eventName:'dashboard_view',metadata:{state:'manual_pending',locale:'pt-BR',currency:'BRL',provider:'hotmart'}})}).catch(()=>{});
       return;
     }

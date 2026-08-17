@@ -30,19 +30,29 @@
     readyResolve?.();
   }
 
-  window.metaTrackPurchase = async ({ txHash, value }) => {
+  const purchaseStorageKey = eventID => `meta_purchase_${eventID}`;
+  const wasTracked = eventID => {
+    try { return localStorage.getItem(purchaseStorageKey(eventID)) === '1'; }
+    catch { return false; }
+  };
+  const rememberTracked = eventID => {
+    try { localStorage.setItem(purchaseStorageKey(eventID), '1'); }
+    catch { /* Tracking still works when browser storage is unavailable. */ }
+  };
+
+  window.metaTrackPurchase = async ({ eventId, orderId, txHash, value, currency = 'USD' }) => {
     await ready;
-    if (!pixelId || !window.fbq || !txHash) return;
-    const eventID = `crypto:${txHash}`;
-    const storageKey = `meta_purchase_${eventID}`;
-    if (sessionStorage.getItem(storageKey)) return;
-    sessionStorage.setItem(storageKey, '1');
+    const purchaseId = String(orderId || txHash || '').trim();
+    const eventID = String(eventId || (txHash ? `crypto:${txHash}` : `purchase:${purchaseId}`)).trim();
+    if (!pixelId || !window.fbq || !purchaseId || !eventID || wasTracked(eventID)) return;
     window.fbq('track', 'Purchase', {
       value: Number(value || 0),
-      currency: 'USD',
+      currency: String(currency || 'USD').toUpperCase(),
       content_name: 'PremiumHairstyles AI',
-      content_type: 'product'
+      content_type: 'product',
+      order_id: purchaseId
     }, { eventID });
+    rememberTracked(eventID);
   };
 
   fetch('/api/meta/config', { cache:'no-store', credentials:'same-origin' })
