@@ -104,16 +104,13 @@ const normalizePublicBrand = (html) => String(html)
   .replace(/Premium Hairstyles AI/g, 'PremiumHairstyles AI')
   .replace(/<title>[\s\S]*?<\/title>/i, '<title>PremiumHairstyles AI</title>');
 
-// Source HTML remains the English master. The active production storefront gets
-// the pt-BR layer at response time; the pre-localization English/USD copy is also
-// preserved on branch `english-usd-snapshot` for future locale routing.
 const page = (name, { localize=true } = {}) => (req, res, next) => {
   const filePath = path.join(root, 'public', name);
   if (!localize || config.siteLocale.toLowerCase() !== 'pt-br') return res.sendFile(filePath);
   fs.readFile(filePath, 'utf8', (error, html) => {
     if (error) return next(error);
     let localized = normalizePublicBrand(html.replace(/<html\s+lang="en"/i, '<html lang="pt-BR"'));
-    const tags = '<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script>';
+    const tags = '<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
     if (!localized.includes('/pt-br-runtime.js')) localized = localized.replace('</head>', `${tags}</head>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
@@ -142,7 +139,7 @@ app.use((req, res, next) => {
   const filePath=path.join(root,'public','404.html');
   fs.readFile(filePath,'utf8',(error,html)=>{
     if(error)return next(error);
-    const tags='<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script>';
+    const tags='<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
     const localized=normalizePublicBrand(html.replace(/<html\s+lang="en"/i,'<html lang="pt-BR"')).replace('</head>',`${tags}</head>`);
     res.status(404).type('html').send(localized);
   });
