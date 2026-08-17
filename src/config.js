@@ -20,7 +20,7 @@ export const config = Object.freeze({
   siteLocale: activeLocale,
   siteCurrency: isBrazilStorefront ? 'BRL' : 'USD',
   productName: process.env.PRODUCT_NAME || 'PremiumHairstyles AI',
-  supportEmail: process.env.SUPPORT_EMAIL || 'support@mail.premium-hairstyles.com',
+  supportEmail: process.env.SUPPORT_EMAIL || 'support@mail.premium-hairstyle.com',
   supportPhone: process.env.SUPPORT_PHONE || '',
   legalBusinessName: process.env.LEGAL_BUSINESS_NAME || 'PremiumHairstyles AI',
   legalBusinessAddress: process.env.LEGAL_BUSINESS_ADDRESS || '',
