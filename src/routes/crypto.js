@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import { getSupabase } from '../lib/supabase.js';
 import { repo } from '../lib/repository.js';
 import { log } from '../lib/log.js';
+import { sendMetaPurchase } from '../lib/meta.js';
 import { leadSession, sameOrigin, noStore } from '../middleware.js';
 
 const router = Router();
@@ -161,7 +162,7 @@ async function evm(intent,kind){
 }
 async function detect(intent){if(!verifierReady(intent.network))return null;if(intent.network==='trc20')return tron(intent);return evm(intent,intent.network);}
 
-async function markPaid(intent,match){
+async function markPaid(intent,match,request){
   if(!match?.hash)return intent;const sb=getSupabase();
   const {data:used,error:ue}=await sb.from('crypto_payment_intents').select('id').eq('tx_hash',match.hash).limit(1);if(ue)throw ue;if(used?.length&&used[0].id!==intent.id)return intent;
   const paidAt=now(),receivedAmount=Number(match.receivedAmount||intent.amount);
@@ -170,15 +171,16 @@ async function markPaid(intent,match){
   const provider=`crypto_${intent.network}`;
   await repo.insertPaymentEventIfNew({provider,provider_event_id:`${intent.network}:${match.hash}`,order_id:match.hash,event_type:'payment_confirmed',payload:{network:intent.network,asset:'USDT',expectedAmount:Number(intent.amount),receivedAmount,to:intent.address,from:match.from||null,confirmations:match.confirmations||0,toleranceUsdt:config.cryptoPaymentToleranceUsdt},verified:true});
   await repo.upsertPayment({lead_id:intent.lead_id,provider,provider_order_id:match.hash,status:'paid',amount:receivedAmount,currency:'USDT',paid_at:paidAt,raw_payload:{network:intent.network,intent_id:intent.id,expected_amount:Number(intent.amount),received_amount:receivedAmount,to:intent.address,from:match.from||null,confirmations:match.confirmations||0}});
-  await repo.updateLead(intent.lead_id,{payment_status:'paid',payment_provider:provider,payment_order_id:match.hash,payment_amount:receivedAmount,payment_currency:'USDT',paid_at:paidAt,generation_status:'manual_pending'});
+  const updatedLead=await repo.updateLead(intent.lead_id,{payment_status:'paid',payment_provider:provider,payment_order_id:match.hash,payment_amount:receivedAmount,payment_currency:'USDT',paid_at:paidAt,generation_status:'manual_pending'});
   await repo.insertAnalytics({session_id:'crypto',lead_id:intent.lead_id,event_name:'payment_success',metadata:{provider,network:intent.network,txHash:match.hash,expectedAmount:Number(intent.amount),receivedAmount,currency:'USDT'}});
+  await sendMetaPurchase({lead:updatedLead,txHash:match.hash,request,value:config.cryptoPriceUsdt});
   return paid;
 }
-async function refresh(intent){
+async function refresh(intent,request){
   const sb=getSupabase();if(intent.status!=='pending')return intent;
   // Check the chain first, even if the UI timer has just expired. This accepts a payment that was
   // actually sent before expiry but became visible to our verifier a little later.
-  const match=await detect(intent);if(match)return markPaid(intent,match);
+  const match=await detect(intent);if(match)return markPaid(intent,match,request);
   if(new Date(intent.expires_at).getTime()<=Date.now()){
     const {data,error}=await sb.from('crypto_payment_intents').update({status:'expired',updated_at:now()}).eq('id',intent.id).eq('status','pending').select('*').single();if(error)throw error;return data;
   }
@@ -201,7 +203,7 @@ async function status(req,res,next,manual=false){try{
   const sb=getSupabase();const {data,error}=await sb.from('crypto_payment_intents').select('*').eq('id',req.params.id).eq('lead_id',req.lead.id).maybeSingle();
   if(error)throw error;if(!data)return res.status(404).json({error:'intent_not_found'});
   let intent=data;
-  try{intent=await refresh(intent);}catch(e){
+  try{intent=await refresh(intent,req);}catch(e){
     log.warn('crypto_verify_failed',{intentId:intent.id,network:intent.network,error:e.message});
     if(manual)return res.status(503).json({error:'verification_temporarily_unavailable',details:config.isProduction?undefined:e.message,intent:expose(intent)});
     return res.json({intent:expose(intent),verificationError:'temporary_verification_error'});
