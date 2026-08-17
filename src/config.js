@@ -7,8 +7,6 @@ const activeLocale = process.env.SITE_LOCALE || 'pt-BR';
 const isBrazilStorefront = activeLocale.toLowerCase() === 'pt-br';
 const usdPrice = process.env.PRICE_DISPLAY_USD || '6.99';
 const brlPrice = process.env.PRICE_DISPLAY_BRL || '36.49';
-const usdPaddlePrice = process.env.PADDLE_PRICE_ID || '';
-const brlPaddlePrice = process.env.PADDLE_PRICE_ID_BR || '';
 
 export const config = Object.freeze({
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -38,14 +36,10 @@ export const config = Object.freeze({
   originalBucket: process.env.SUPABASE_ORIGINAL_BUCKET || 'hair-originals',
   resultsBucket: process.env.SUPABASE_RESULTS_BUCKET || 'hair-results',
 
-  paymentProvider: process.env.PAYMENT_PROVIDER || 'paddle',
-  paddleEnvironment: process.env.PADDLE_ENVIRONMENT || 'sandbox',
-  paddleApiKey: process.env.PADDLE_API_KEY || '',
-  paddleClientToken: process.env.PADDLE_CLIENT_TOKEN || '',
-  paddlePriceId: isBrazilStorefront ? brlPaddlePrice : usdPaddlePrice,
-  paddlePriceIdUsd: usdPaddlePrice,
-  paddlePriceIdBr: brlPaddlePrice,
-  paddleWebhookSecret: process.env.PADDLE_WEBHOOK_SECRET || '',
+  paymentProvider: process.env.PAYMENT_PROVIDER || 'hotmart',
+  hotmartCheckoutUrl: process.env.HOTMART_CHECKOUT_URL || 'https://pay.hotmart.com/C107198329T',
+  hotmartProductId: String(process.env.HOTMART_PRODUCT_ID || '8330743'),
+  hotmartHottok: process.env.HOTMART_HOTTOK || '',
 
   aiProvider: process.env.AI_PROVIDER || 'replicate',
   replicateToken: process.env.REPLICATE_API_TOKEN || '',
@@ -89,16 +83,15 @@ export function assertProductionConfig() {
     ['IP_HASH_SALT', process.env.IP_HASH_SALT],
     ['SUPABASE_URL', config.supabaseUrl],
     ['SUPABASE_SECRET_KEY', config.supabaseSecretKey],
-    ['PADDLE_CLIENT_TOKEN', config.paddleClientToken],
-    ['PADDLE_WEBHOOK_SECRET', config.paddleWebhookSecret],
+    ['HOTMART_CHECKOUT_URL', config.hotmartCheckoutUrl],
+    ['HOTMART_PRODUCT_ID', config.hotmartProductId],
+    ['HOTMART_HOTTOK', config.hotmartHottok],
     ['ADMIN_EMAILS', process.env.ADMIN_EMAILS],
     ['SUPPORT_EMAIL', process.env.SUPPORT_EMAIL],
     ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
     ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
   ];
-  if (!isBrazilStorefront) required.push(['PADDLE_PRICE_ID', config.paddlePriceId]);
-  if (config.paymentProvider !== 'paddle') required.push(['PAYMENT_PROVIDER must be paddle', config.paymentProvider === 'paddle' ? 'ok' : '']);
-  if (!['sandbox','production'].includes(config.paddleEnvironment)) required.push(['PADDLE_ENVIRONMENT must be sandbox or production', '']);
+  if (config.paymentProvider !== 'hotmart') required.push(['PAYMENT_PROVIDER must be hotmart', config.paymentProvider === 'hotmart' ? 'ok' : '']);
   if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
   if (config.emailVerificationEnabled) {
     required.push(
