@@ -36,7 +36,7 @@ export const config = Object.freeze({
   originalBucket: process.env.SUPABASE_ORIGINAL_BUCKET || 'hair-originals',
   resultsBucket: process.env.SUPABASE_RESULTS_BUCKET || 'hair-results',
 
-  paymentProvider: process.env.PAYMENT_PROVIDER || 'hotmart',
+  paymentProvider: 'hotmart',
   hotmartCheckoutUrl: process.env.HOTMART_CHECKOUT_URL || 'https://pay.hotmart.com/C107198329T',
   hotmartProductId: String(process.env.HOTMART_PRODUCT_ID || '8330743'),
   hotmartHottok: process.env.HOTMART_HOTTOK || '',
@@ -85,13 +85,11 @@ export function assertProductionConfig() {
     ['SUPABASE_SECRET_KEY', config.supabaseSecretKey],
     ['HOTMART_CHECKOUT_URL', config.hotmartCheckoutUrl],
     ['HOTMART_PRODUCT_ID', config.hotmartProductId],
-    ['HOTMART_HOTTOK', config.hotmartHottok],
     ['ADMIN_EMAILS', process.env.ADMIN_EMAILS],
     ['SUPPORT_EMAIL', process.env.SUPPORT_EMAIL],
     ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
     ['LEGAL_BUSINESS_ADDRESS', process.env.LEGAL_BUSINESS_ADDRESS]
   ];
-  if (config.paymentProvider !== 'hotmart') required.push(['PAYMENT_PROVIDER must be hotmart', config.paymentProvider === 'hotmart' ? 'ok' : '']);
   if (config.manualFulfillmentMode) required.push(['ADMIN_PASSWORD', config.adminPassword]);
   if (config.emailVerificationEnabled) {
     required.push(
