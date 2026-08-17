@@ -48,12 +48,11 @@ app.use('/api/webhooks/paddle', express.raw({ type: 'application/json', limit: '
 app.use('/api/webhooks', webhookRoutes);
 app.use(express.json({ limit: '256kb' }));
 
-// Active payment flow: direct USDT on TRC20 / ERC20 / BEP20.
-app.use('/api/crypto', cryptoRoutes);
-
 const apiLimiter = rateLimit({ windowMs: 60_000, limit: 180, standardHeaders: 'draft-8', legacyHeaders: false });
+const cryptoLimiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 12, standardHeaders: 'draft-8', legacyHeaders: false });
 app.use('/api', apiLimiter);
+app.use('/api/crypto', cryptoLimiter, cryptoRoutes);
 app.use('/api/auth', authLimiter);
 app.use('/api/admin/auth', authLimiter);
 app.use('/api/verify-email', authLimiter);
