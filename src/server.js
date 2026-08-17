@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { config, assertProductionConfig } from './config.js';
 import publicRoutes from './routes/public.js';
 import webhookRoutes from './routes/webhooks.js';
-import hotmartRoutes from './routes/hotmart.js';
+import cryptoRoutes from './routes/crypto.js';
 import adminRoutes from './routes/admin.js';
 import { log } from './lib/log.js';
 import { startWorker } from './services/workerLoop.js';
@@ -43,13 +43,13 @@ app.use(helmet({
 app.use(compression());
 app.use(cookieParser());
 
-// Legacy Paddle webhook stays available only for old transactions.
+// Legacy Paddle webhook is kept only for historical transactions.
 app.use('/api/webhooks/paddle', express.raw({ type: 'application/json', limit: '256kb' }));
 app.use('/api/webhooks', webhookRoutes);
-
-// Active payment flow: Hotmart.
-app.use('/api/hotmart', express.json({ limit:'256kb' }), hotmartRoutes);
 app.use(express.json({ limit: '256kb' }));
+
+// Active payment flow: direct USDT on TRC20 / ERC20 / BEP20.
+app.use('/api/crypto', cryptoRoutes);
 
 const apiLimiter = rateLimit({ windowMs: 60_000, limit: 180, standardHeaders: 'draft-8', legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 12, standardHeaders: 'draft-8', legacyHeaders: false });
@@ -107,7 +107,6 @@ const normalizePublicBrand = (html) => String(html)
   .replace(/HairLook AI/g, 'PremiumHairstyles AI')
   .replace(/Premium-Hairstyles/g, 'PremiumHairstyles AI')
   .replace(/Premium Hairstyles AI/g, 'PremiumHairstyles AI')
-  .replace(/Paddle/g, 'Hotmart')
   .replace(/<title>[\s\S]*?<\/title>/i, '<title>PremiumHairstyles AI</title>');
 
 const page = (name, { localize=true } = {}) => (req, res, next) => {
