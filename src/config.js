@@ -53,6 +53,12 @@ export const config = Object.freeze({
   cryptoErc20Confirmations: integer(process.env.CRYPTO_ERC20_CONFIRMATIONS, 3),
   cryptoBep20Confirmations: integer(process.env.CRYPTO_BEP20_CONFIRMATIONS, 5),
 
+  // Meta advertising measurement. Pixel ID is public; the Conversions API token is server-only.
+  metaPixelId: String(process.env.META_PIXEL_ID || '').trim(),
+  metaConversionsApiToken: process.env.META_CONVERSIONS_API_TOKEN || '',
+  metaTestEventCode: process.env.META_TEST_EVENT_CODE || '',
+  metaGraphApiVersion: process.env.META_GRAPH_API_VERSION || '',
+
   // Legacy provider settings are kept only so old deployments/data remain readable.
   hotmartCheckoutUrl: process.env.HOTMART_CHECKOUT_URL || '',
   hotmartProductId: String(process.env.HOTMART_PRODUCT_ID || ''),
