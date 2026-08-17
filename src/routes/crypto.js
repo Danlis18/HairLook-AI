@@ -102,11 +102,11 @@ async function tron(intent){
   u.searchParams.set('only_confirmed','true');u.searchParams.set('limit','200');u.searchParams.set('contract_address',TRON_USDT);
   const headers={accept:'application/json'};if(config.tronGridApiKey)headers['TRON-PRO-API-KEY']=config.tronGridApiKey;
   const r=await fetch(u,{headers,signal:AbortSignal.timeout(8000)});if(!r.ok)throw new Error(`trongrid_${r.status}`);
-  const j=await r.json(),target=units(intent.amount,6),after=new Date(intent.created_at).getTime()-60000;
+  const j=await r.json(),target=units(intent.amount,6),after=new Date(intent.created_at).getTime()-60000,before=new Date(intent.expires_at).getTime()+120000;
   for(const x of j.data||[]){
     if(x.token_info?.address&&x.token_info.address!==TRON_USDT)continue;
     if(String(x.to||'')!==intent.address)continue;
-    if(Number(x.block_timestamp||0)<after)continue;
+    const ts=Number(x.block_timestamp||0);if(ts<after||ts>before)continue;
     const received=BigInt(String(x.value||0));
     if(!amountMatches(received,target,6))continue;
     return{hash:String(x.transaction_id||''),from:String(x.from||''),confirmations:1,receivedAmount:decimalFromUnits(received,6)};
@@ -148,9 +148,10 @@ async function evm(intent,kind){
       try{rows=await fetchEtherscanRows(intent,kind);}catch(e){throw new Error(`${bscError?.message||'bscscan_failed'}; ${e.message}`);}
     }
   }
-  const after=Math.floor(new Date(intent.created_at).getTime()/1000)-60;
+  const after=Math.floor(new Date(intent.created_at).getTime()/1000)-60,before=Math.floor(new Date(intent.expires_at).getTime()/1000)+120;
   for(const x of rows||[]){
-    if(lower(x.contractAddress)!==contract||lower(x.to)!==lower(intent.address)||Number(x.timeStamp||0)<after)continue;
+    const ts=Number(x.timeStamp||0);
+    if(lower(x.contractAddress)!==contract||lower(x.to)!==lower(intent.address)||ts<after||ts>before)continue;
     const d=Number(x.tokenDecimal||nets[kind].decimals),received=BigInt(String(x.value||0)),target=units(intent.amount,d);
     if(!amountMatches(received,target,d))continue;
     const c=Number(x.confirmations||0);if(c<nets[kind].confirmations)continue;
@@ -175,10 +176,13 @@ async function markPaid(intent,match){
 }
 async function refresh(intent){
   const sb=getSupabase();if(intent.status!=='pending')return intent;
+  // Check the chain first, even if the UI timer has just expired. This accepts a payment that was
+  // actually sent before expiry but became visible to our verifier a little later.
+  const match=await detect(intent);if(match)return markPaid(intent,match);
   if(new Date(intent.expires_at).getTime()<=Date.now()){
     const {data,error}=await sb.from('crypto_payment_intents').update({status:'expired',updated_at:now()}).eq('id',intent.id).eq('status','pending').select('*').single();if(error)throw error;return data;
   }
-  const match=await detect(intent);return match?markPaid(intent,match):intent;
+  return intent;
 }
 
 router.post('/intents',sameOrigin,leadSession,async(req,res,next)=>{try{
