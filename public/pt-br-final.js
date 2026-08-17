@@ -16,7 +16,7 @@
     document.head.appendChild(link);
   }
 
-  const SUPPORT_EMAIL='support@mail.premium-hairstyles.com';
+  const SUPPORT_EMAIL='support@mail.premium-hairstyle.com';
   const current=36.49, compare=129.90, saving=compare-current;
   const brl=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
   const titles={
@@ -42,7 +42,7 @@
     ['Who processes my payment?','Quem processa meu pagamento?'],
     ['Can I explore gray-friendly options?','Posso explorar opções para cabelos grisalhos?'],
     ['See yourself before making the change.','Veja como você fica antes de mudar o visual.'],
-    ['One photo. A guided style consultation. Personalized results delivered to your verified email within 72 hours.','Uma foto. Uma consultoria guiada de estilo. Resultados personalizados enviados ao seu e-mail verificado em até 72 horas.'],
+    ['One photo. A guided style consultation. Personalized results delivered to your verified email within 72 hours.','Uma foto. Uma consultoria guiada de estilo. Resultados personalizados enviados ao seu e-mail verificado em até 15 minutos.'],
     ['You decide what you want to explore. We do not pretend to diagnose your face or age.','Você escolhe o que deseja explorar. Não fazemos diagnóstico do seu rosto nem da sua idade.'],
     ['Keep your color, try warm or cool dimension, explore blonde, auburn, silver or gray blending.','Mantenha sua cor, experimente nuances quentes ou frias e explore loiro, acobreado, prateado ou integração dos fios grisalhos.'],
     ['Choose whether you want five-minute styling or a more polished salon-finished look.','Escolha entre um penteado rápido de cinco minutos ou um visual mais elaborado, com acabamento de salão.'],
@@ -60,8 +60,8 @@
     ['How it works','Como funciona'],['From “maybe” to hairstyle ideas made for you.','Da dúvida a ideias de penteados feitas para você.'],
     ['Tell us about your style.','Conte sobre o seu estilo.'],['A short guided consultation about length, texture, color, lifestyle and the change you want.','Uma consultoria rápida sobre comprimento, textura, cor, rotina e a mudança que você deseja.'],
     ['Upload one clear photo.','Envie uma foto nítida.'],['A front-facing portrait in good light is enough. Your original is kept private and used for your order.','Uma foto de frente e com boa iluminação é suficiente. O original permanece privado e é usado apenas no seu pedido.'],
-    ['Enter and verify your email once.','Informe e verifique seu e-mail uma única vez.'],['Enter the address where you want the results delivered. We immediately send a 6-digit verification code; after verification, you continue to the one-time Paddle checkout.','Informe o e-mail onde deseja receber os resultados. Enviamos imediatamente um código de 6 dígitos e, após a verificação, você segue para o checkout único da Paddle.'],
-    ['Receive your results by email.','Receba seus resultados por e-mail.'],['After payment is confirmed, your personalized hairstyle results are prepared and sent to your verified email within 72 hours.','Após a confirmação do pagamento, seus resultados personalizados são preparados e enviados ao e-mail verificado em até 72 horas.'],
+    ['Enter and verify your email once.','Informe e verifique seu e-mail uma única vez.'],['Enter the address where you want the results delivered. We immediately send a 6-digit verification code; after verification, you continue to the one-time Paddle checkout.','Informe o e-mail onde deseja receber os resultados. Enviamos imediatamente um código de 6 dígitos e, após a verificação, você segue para o checkout único e seguro da Hotmart.'],
+    ['Receive your results by email.','Receba seus resultados por e-mail.'],['After payment is confirmed, your personalized hairstyle results are prepared and sent to your verified email within 72 hours.','Após a confirmação do pagamento, seus resultados personalizados são preparados e enviados ao e-mail verificado em até 15 minutos.'],
     ['One good photo is enough','Uma boa foto é suficiente'],['Simple photo guidance. Better previews.','Orientações simples para fotos. Prévias melhores.'],['No studio setup. We only ask for a clear portrait with your face visible and enough light to understand the hairline and current hair.','Não é preciso estúdio. Basta uma foto nítida, com o rosto visível e iluminação suficiente para mostrar a linha do cabelo e o cabelo atual.'],
     ['For the best result','Para o melhor resultado'],['Try to avoid','Evite'],['Face clearly visible','Rosto claramente visível'],['Good natural lighting','Boa iluminação natural'],['Looking toward the camera','Olhando para a câmera'],['Sunglasses or face covered','Óculos escuros ou rosto coberto'],['Strong shadows','Sombras fortes'],['Very blurry or tiny image','Imagem muito desfocada ou pequena']
   ]);
@@ -74,6 +74,8 @@
       if(translations.has(key))n.nodeValue=raw.replace(key,translations.get(key));
       if(n.nodeValue.includes('support@example.com'))n.nodeValue=n.nodeValue.replaceAll('support@example.com',SUPPORT_EMAIL);
       if(n.nodeValue.includes('results@example.com'))n.nodeValue=n.nodeValue.replaceAll('results@example.com',SUPPORT_EMAIL);
+      if(n.nodeValue.includes('support@mail.premium-hairstyles.com'))n.nodeValue=n.nodeValue.replaceAll('support@mail.premium-hairstyles.com',SUPPORT_EMAIL);
+      if(n.nodeValue.includes('Paddle'))n.nodeValue=n.nodeValue.replaceAll('Paddle','Hotmart');
       if(n.nodeValue.trim()==='USD')n.nodeValue=n.nodeValue.replace('USD','BRL');
       else if(n.nodeValue.includes('$6.99 USD'))n.nodeValue=n.nodeValue.replaceAll('$6.99 USD','R$ 36,49');
       else if(n.nodeValue.includes('$6.99'))n.nodeValue=n.nodeValue.replaceAll('$6.99','R$ 36,49');
@@ -88,7 +90,7 @@
   };
 
   const descriptions={
-    '/':'Consultoria privada de penteados com quiz, foto e sugestões personalizadas. Pagamento único e entrega dos resultados no e-mail verificado em até 72 horas.',
+    '/':'Consultoria privada de penteados com quiz, foto e sugestões personalizadas. Pagamento único e entrega dos resultados no e-mail verificado em até 15 minutos.',
     '/product':'Detalhes da Coleção Personalizada de Penteados da PremiumHairstyles AI, incluindo preço, entrega, privacidade, limitações e suporte.',
     '/price':'Preço da PremiumHairstyles AI no Brasil: oferta promocional de R$ 36,49 em pagamento único, sem assinatura.'
   };
@@ -119,7 +121,7 @@
   const applySupportEmail=()=>{
     const supportCol=[...document.querySelectorAll('.footer-col')].find(col=>{const title=col.querySelector('strong')?.textContent.trim().toLowerCase();return title==='support'||title==='suporte';});
     if(supportCol&&!supportCol.querySelector('[data-brand-support-email]')){const link=document.createElement('a');link.href=`mailto:${SUPPORT_EMAIL}`;link.textContent=SUPPORT_EMAIL;link.dataset.brandSupportEmail='true';supportCol.appendChild(link);}
-    document.querySelectorAll('a[href^="mailto:"]').forEach(link=>{if(/support@example\.com|results@example\.com/i.test(link.getAttribute('href')||'')){link.href=`mailto:${SUPPORT_EMAIL}`;link.textContent=SUPPORT_EMAIL;}});
+    document.querySelectorAll('a[href^="mailto:"]').forEach(link=>{if(/support@example\.com|results@example\.com|support@mail\.premium-hairstyles\.com/i.test(link.getAttribute('href')||'')){link.href=`mailto:${SUPPORT_EMAIL}`;link.textContent=SUPPORT_EMAIL;}});
   };
 
   translateOnce();applyPrice();applyPhotoExamples();removeHeroTrustExtras();applySupportEmail();
