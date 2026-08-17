@@ -2,6 +2,7 @@ try { process.loadEnvFile?.('.env'); } catch { /* Railway injects env; .env is o
 
 const bool = (value, fallback = false) => value == null ? fallback : ['1','true','yes','on'].includes(String(value).toLowerCase());
 const integer = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+const number = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const list = (value) => String(value || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
 const activeLocale = process.env.SITE_LOCALE || 'pt-BR';
 const isBrazilStorefront = activeLocale.toLowerCase() === 'pt-br';
@@ -36,9 +37,23 @@ export const config = Object.freeze({
   originalBucket: process.env.SUPABASE_ORIGINAL_BUCKET || 'hair-originals',
   resultsBucket: process.env.SUPABASE_RESULTS_BUCKET || 'hair-results',
 
-  paymentProvider: 'hotmart',
-  hotmartCheckoutUrl: process.env.HOTMART_CHECKOUT_URL || 'https://pay.hotmart.com/C107198329T',
-  hotmartProductId: String(process.env.HOTMART_PRODUCT_ID || '8330743'),
+  // Active payment flow: direct USDT. No private wallet key is ever stored by the app.
+  paymentProvider: 'crypto',
+  cryptoPriceUsdt: number(process.env.CRYPTO_PRICE_USDT, 6.99),
+  cryptoIntentTtlMinutes: integer(process.env.CRYPTO_INTENT_TTL_MINUTES, 30),
+  cryptoTrc20Address: process.env.CRYPTO_TRC20_ADDRESS || 'TMS2rDhMQi5emHGQ2ixoyfMgjabryZTLJW',
+  cryptoErc20Address: process.env.CRYPTO_ERC20_ADDRESS || '0x16420e2a9aa8c4ca89b328ef36c1120e67607d81',
+  cryptoBep20Address: process.env.CRYPTO_BEP20_ADDRESS || '0x16420e2a9aa8c4ca89b328ef36c1120e67607d81',
+  cryptoAutoVerify: bool(process.env.CRYPTO_AUTO_VERIFY, true),
+  tronGridApiKey: process.env.TRONGRID_API_KEY || '',
+  etherscanApiKey: process.env.ETHERSCAN_API_KEY || '',
+  bscscanApiKey: process.env.BSCSCAN_API_KEY || '',
+  cryptoErc20Confirmations: integer(process.env.CRYPTO_ERC20_CONFIRMATIONS, 3),
+  cryptoBep20Confirmations: integer(process.env.CRYPTO_BEP20_CONFIRMATIONS, 5),
+
+  // Legacy provider settings are kept only so old deployments/data remain readable.
+  hotmartCheckoutUrl: process.env.HOTMART_CHECKOUT_URL || '',
+  hotmartProductId: String(process.env.HOTMART_PRODUCT_ID || ''),
   hotmartHottok: process.env.HOTMART_HOTTOK || '',
 
   aiProvider: process.env.AI_PROVIDER || 'replicate',
@@ -83,8 +98,9 @@ export function assertProductionConfig() {
     ['IP_HASH_SALT', process.env.IP_HASH_SALT],
     ['SUPABASE_URL', config.supabaseUrl],
     ['SUPABASE_SECRET_KEY', config.supabaseSecretKey],
-    ['HOTMART_CHECKOUT_URL', config.hotmartCheckoutUrl],
-    ['HOTMART_PRODUCT_ID', config.hotmartProductId],
+    ['CRYPTO_TRC20_ADDRESS', config.cryptoTrc20Address],
+    ['CRYPTO_ERC20_ADDRESS', config.cryptoErc20Address],
+    ['CRYPTO_BEP20_ADDRESS', config.cryptoBep20Address],
     ['ADMIN_EMAILS', process.env.ADMIN_EMAILS],
     ['SUPPORT_EMAIL', process.env.SUPPORT_EMAIL],
     ['LEGAL_BUSINESS_NAME', process.env.LEGAL_BUSINESS_NAME],
