@@ -29,16 +29,16 @@ async function loadStatus(){
       setState({
         eyebrow:'Pedido confirmado',
         title:'Obrigado. Seu pedido foi confirmado.',
-        message:'Seus resultados personalizados estão sendo preparados e serão enviados para o seu e-mail verificado em até 72 horas.',
+        message:'Seus resultados personalizados estão sendo preparados e serão enviados para o seu e-mail verificado em até 15 minutos.',
         email:lead.email||'',
         confirmed:true
       });
-      fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sessionStorage.getItem('hairlook_session_id')||'dashboard',eventName:'dashboard_view',metadata:{state:'manual_pending',locale:'pt-BR',currency:'BRL'}})}).catch(()=>{});
+      fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sessionStorage.getItem('hairlook_session_id')||'dashboard',eventName:'dashboard_view',metadata:{state:'manual_pending',locale:'pt-BR',currency:'BRL',provider:'hotmart'}})}).catch(()=>{});
       return;
     }
 
     if(['checkout_started','waiting','unpaid'].includes(lead.paymentStatus)){
-      setState({eyebrow:'Confirmando pagamento',title:'Aguarde um momento.',message:'Estamos confirmando seu pagamento com segurança. Normalmente isso leva apenas alguns segundos.',email:lead.email||''});
+      setState({eyebrow:'Confirmando pagamento',title:'Aguarde um momento.',message:'Estamos confirmando seu pagamento com a Hotmart. Normalmente isso leva apenas alguns segundos.',email:lead.email||''});
       pollTimer=setTimeout(loadStatus,2500);
       return;
     }
