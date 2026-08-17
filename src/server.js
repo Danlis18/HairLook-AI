@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { config, assertProductionConfig } from './config.js';
 import publicRoutes from './routes/public.js';
 import webhookRoutes from './routes/webhooks.js';
+import hotmartRoutes from './routes/hotmart.js';
 import adminRoutes from './routes/admin.js';
 import { log } from './lib/log.js';
 import { startWorker } from './services/workerLoop.js';
@@ -28,9 +29,9 @@ app.use(helmet({
       mediaSrc: ["'self'", 'blob:'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      scriptSrc: ["'self'", 'https://cdn.paddle.com'],
-      connectSrc: ["'self'", 'https://*.paddle.com'],
-      frameSrc: ["'self'", 'https://*.paddle.com'],
+      scriptSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'self'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       frameAncestors: ["'none'"]
@@ -42,8 +43,12 @@ app.use(helmet({
 app.use(compression());
 app.use(cookieParser());
 
+// Legacy Paddle webhook stays available only for old transactions.
 app.use('/api/webhooks/paddle', express.raw({ type: 'application/json', limit: '256kb' }));
 app.use('/api/webhooks', webhookRoutes);
+
+// Active payment flow: Hotmart.
+app.use('/api/hotmart', express.json({ limit:'256kb' }), hotmartRoutes);
 app.use(express.json({ limit: '256kb' }));
 
 const apiLimiter = rateLimit({ windowMs: 60_000, limit: 180, standardHeaders: 'draft-8', legacyHeaders: false });
@@ -53,7 +58,7 @@ app.use('/api/auth', authLimiter);
 app.use('/api/admin/auth', authLimiter);
 app.use('/api/verify-email', authLimiter);
 
-app.get('/health', (req, res) => res.json({ ok: true, service: 'hairlook-ai', demoMode: config.demoMode, locale:config.siteLocale, currency:config.siteCurrency, timestamp: new Date().toISOString() }));
+app.get('/health', (req, res) => res.json({ ok: true, service: 'hairlook-ai', demoMode: config.demoMode, locale:config.siteLocale, currency:config.siteCurrency, paymentProvider:config.paymentProvider, timestamp: new Date().toISOString() }));
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/admin', adminRoutes);
@@ -102,6 +107,7 @@ const normalizePublicBrand = (html) => String(html)
   .replace(/HairLook AI/g, 'PremiumHairstyles AI')
   .replace(/Premium-Hairstyles/g, 'PremiumHairstyles AI')
   .replace(/Premium Hairstyles AI/g, 'PremiumHairstyles AI')
+  .replace(/Paddle/g, 'Hotmart')
   .replace(/<title>[\s\S]*?<\/title>/i, '<title>PremiumHairstyles AI</title>');
 
 const page = (name, { localize=true } = {}) => (req, res, next) => {
@@ -152,7 +158,7 @@ app.use((error, req, res, next) => {
   res.status(status).send(config.siteLocale.toLowerCase()==='pt-br'?'Algo deu errado. Tente novamente.':'Something went wrong. Please try again.');
 });
 
-const server = app.listen(config.port, () => log.info('server_started', { port: config.port, appUrl: config.appUrl, demoMode: config.demoMode, locale:config.siteLocale, currency:config.siteCurrency }));
+const server = app.listen(config.port, () => log.info('server_started', { port: config.port, appUrl: config.appUrl, demoMode: config.demoMode, locale:config.siteLocale, currency:config.siteCurrency, paymentProvider:config.paymentProvider }));
 const controller = new AbortController();
 if (config.demoMode) startWorker({ signal: controller.signal }).catch(error => log.error('demo_worker_crash', { error:error.message }));
 for (const sig of ['SIGINT','SIGTERM']) process.on(sig, () => { controller.abort(); server.close(() => process.exit(0)); });
