@@ -29,18 +29,26 @@ function verifierReady(network){
   if(network==='bep20')return !!config.bscscanApiKey;
   return false;
 }
-function expose(row){const n=nets[row.network];return{id:row.id,network:row.network,networkCode:n.code,networkLabel:n.label,asset:'USDT',address:row.address,amount:Number(row.amount).toFixed(4),baseAmount:Number(row.base_amount).toFixed(2),status:row.status,txHash:row.tx_hash||null,confirmations:Number(row.confirmations||0),requiredConfirmations:n.confirmations,expiresAt:row.expires_at,paidAt:row.paid_at||null,verificationReady:verifierReady(row.network)};}
+function expose(row){
+  const n=nets[row.network];
+  return {
+    id:row.id,network:row.network,networkCode:n.code,networkLabel:n.label,asset:'USDT',address:row.address,
+    amount:Number(row.amount).toFixed(4),baseAmount:Number(row.base_amount).toFixed(2),status:row.status,
+    txHash:row.tx_hash||null,confirmations:Number(row.confirmations||0),requiredConfirmations:n.confirmations,
+    expiresAt:row.expires_at,paidAt:row.paid_at||null,verificationReady:verifierReady(row.network)
+  };
+}
 
 async function allocate(sb,network){
-  // Keep customer-facing amounts compact: at most 4 digits after the decimal point.
-  // For a base price such as 6.99 this allocates 6.9901 ... 6.9999,
-  // giving each active order a small unique fingerprint without six-decimal values.
-  const base=BigInt(Math.round(config.cryptoPriceUsdt*10000));
-  for(let i=0;i<40;i++){
+  // 4 decimal places maximum: base price + unique 0.0001–0.0099 suffix.
+  const scale=10000n;
+  const base=BigInt(Math.round(config.cryptoPriceUsdt*Number(scale)));
+  for(let i=0;i<30;i++){
     const raw=base+BigInt(randomInt(1,100));
-    const amount=`${raw/10000n}.${String(raw%10000n).padStart(4,'0')}`;
+    const amount=`${raw/scale}.${String(raw%scale).padStart(4,'0')}`;
     const {data,error}=await sb.from('crypto_payment_intents').select('id').eq('network',network).eq('amount',amount).eq('status','pending').gt('expires_at',now()).limit(1);
-    if(error)throw error;if(!data?.length)return amount;
+    if(error)throw error;
+    if(!data?.length)return amount;
   }
   throw new Error('crypto_amount_allocation_failed');
 }
@@ -49,12 +57,18 @@ async function makeIntent(lead,network){
   const sb=getSupabase();
   await sb.from('crypto_payment_intents').update({status:'expired',updated_at:now()}).eq('lead_id',lead.id).eq('status','pending').lte('expires_at',now());
   const {data:existing,error:e1}=await sb.from('crypto_payment_intents').select('*').eq('lead_id',lead.id).eq('network',network).eq('status','pending').gt('expires_at',now()).order('created_at',{ascending:false}).limit(1).maybeSingle();
-  if(e1)throw e1;if(existing)return existing;
+  if(e1)throw e1;
+  if(existing){
+    const fraction=(String(existing.amount).split('.')[1]||'').replace(/0+$/,'');
+    if(fraction.length<=4)return existing;
+    await sb.from('crypto_payment_intents').update({status:'canceled',updated_at:now()}).eq('id',existing.id).eq('status','pending');
+  }
   await sb.from('crypto_payment_intents').update({status:'canceled',updated_at:now()}).eq('lead_id',lead.id).eq('status','pending');
   for(let i=0;i<5;i++){
     const amount=await allocate(sb,network),expiresAt=new Date(Date.now()+config.cryptoIntentTtlMinutes*60000).toISOString();
-    const {data,error}=await sb.from('crypto_payment_intents').insert({lead_id:lead.id,network,asset:'USDT',address:n.address,base_amount:config.cryptoPriceUsdt.toFixed(2),amount,status:'pending',expires_at:expiresAt}).select('*').single();
-    if(!error)return data;if(error.code!=='23505')throw error;
+    const {data,error}=await sb.from('crypto_payment_intents').insert({lead_id:lead.id,network,asset:'USDT',address:n.address,base_amount:config.cryptoPriceUsdt.toFixed(6),amount,status:'pending',expires_at:expiresAt}).select('*').single();
+    if(!error)return data;
+    if(error.code!=='23505')throw error;
   }
   throw new Error('crypto_intent_create_failed');
 }
