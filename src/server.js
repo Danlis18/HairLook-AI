@@ -10,6 +10,7 @@ import { config, assertProductionConfig } from './config.js';
 import publicRoutes from './routes/public.js';
 import webhookRoutes from './routes/webhooks.js';
 import cryptoRoutes from './routes/crypto.js';
+import metaRoutes from './routes/meta.js';
 import adminRoutes from './routes/admin.js';
 import { log } from './lib/log.js';
 import { startWorker } from './services/workerLoop.js';
@@ -29,8 +30,8 @@ app.use(helmet({
       mediaSrc: ["'self'", 'blob:'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'"],
+      scriptSrc: ["'self'", 'https://connect.facebook.net'],
+      connectSrc: ["'self'", 'https://www.facebook.com', 'https://connect.facebook.net'],
       frameSrc: ["'self'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
@@ -53,6 +54,7 @@ const cryptoLimiter = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: 
 const authLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 12, standardHeaders: 'draft-8', legacyHeaders: false });
 app.use('/api', apiLimiter);
 app.use('/api/crypto', cryptoLimiter, cryptoRoutes);
+app.use('/api/meta', metaRoutes);
 app.use('/api/auth', authLimiter);
 app.use('/api/admin/auth', authLimiter);
 app.use('/api/verify-email', authLimiter);
@@ -114,7 +116,7 @@ const page = (name, { localize=true } = {}) => (req, res, next) => {
   fs.readFile(filePath, 'utf8', (error, html) => {
     if (error) return next(error);
     let localized = normalizePublicBrand(html.replace(/<html\s+lang="en"/i, '<html lang="pt-BR"'));
-    const tags = '<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
+    const tags = '<script src="/meta-pixel.js" defer></script><script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
     if (!localized.includes('/pt-br-runtime.js')) localized = localized.replace('</head>', `${tags}</head>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
@@ -143,7 +145,7 @@ app.use((req, res, next) => {
   const filePath=path.join(root,'public','404.html');
   fs.readFile(filePath,'utf8',(error,html)=>{
     if(error)return next(error);
-    const tags='<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
+    const tags='<script src="/meta-pixel.js" defer></script><script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
     const localized=normalizePublicBrand(html.replace(/<html\s+lang="en"/i,'<html lang="pt-BR"')).replace('</head>',`${tags}</head>`);
     res.status(404).type('html').send(localized);
   });
