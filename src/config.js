@@ -41,6 +41,8 @@ export const config = Object.freeze({
   paymentProvider: 'crypto',
   cryptoPriceUsdt: number(process.env.CRYPTO_PRICE_USDT, 6.99),
   cryptoIntentTtlMinutes: integer(process.env.CRYPTO_INTENT_TTL_MINUTES, 30),
+  // Automatic matching can tolerate a deducted withdrawal fee while preserving the unique 4-decimal invoice tag.
+  cryptoPaymentToleranceUsdt: Math.max(0, number(process.env.CRYPTO_PAYMENT_TOLERANCE_USDT, 1.00)),
   cryptoTrc20Address: process.env.CRYPTO_TRC20_ADDRESS || 'TMS2rDhMQi5emHGQ2ixoyfMgjabryZTLJW',
   cryptoErc20Address: process.env.CRYPTO_ERC20_ADDRESS || '0x16420e2a9aa8c4ca89b328ef36c1120e67607d81',
   cryptoBep20Address: process.env.CRYPTO_BEP20_ADDRESS || '0x16420e2a9aa8c4ca89b328ef36c1120e67607d81',
