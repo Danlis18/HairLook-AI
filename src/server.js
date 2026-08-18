@@ -13,7 +13,8 @@ import cryptoRoutes from './routes/crypto.js';
 import metaRoutes from './routes/meta.js';
 import adminRoutes from './routes/admin.js';
 import { log } from './lib/log.js';
-import { GEO_LOCALE_COOKIE, LOCALE_COOKIE, resolveRequestLocale } from './lib/locale.js';
+import { GEO_COUNTRY_COOKIE, GEO_LOCALE_COOKIE, LOCALE_COOKIE, resolveRequestLocale } from './lib/locale.js';
+import { applyPricingToHtml, storefrontPricing } from './lib/pricing.js';
 import { startWorker } from './services/workerLoop.js';
 
 assertProductionConfig();
@@ -136,11 +137,15 @@ const page = (name, { localize=true } = {}) => async (req, res, next) => {
   }
   if (req.query?.lang) {
     res.cookie(LOCALE_COOKIE, localeContext.locale, localeCookieOptions(365 * 86400_000));
+    if (localeContext.country) res.cookie(GEO_COUNTRY_COOKIE, localeContext.country, localeCookieOptions(6 * 60 * 60_000));
     res.clearCookie(GEO_LOCALE_COOKIE, { path:'/' });
     return res.redirect(302, cleanLocaleQuery(req));
   }
   if (localeContext.source !== 'preference') {
     res.cookie(GEO_LOCALE_COOKIE, localeContext.locale, localeCookieOptions(6 * 60 * 60_000));
+  }
+  if (localeContext.country) {
+    res.cookie(GEO_COUNTRY_COOKIE, localeContext.country, localeCookieOptions(6 * 60 * 60_000));
   }
   fs.readFile(filePath, 'utf8', (error, html) => {
     if (error) return next(error);
@@ -150,7 +155,9 @@ const page = (name, { localize=true } = {}) => async (req, res, next) => {
       .replace(/<html\s+lang="[^"]*"/i, `<html lang="${lang}" data-locale="${lang}" data-country="${country}"`);
     const sharedTags = '<link rel="stylesheet" href="/locale-switcher.css"><link rel="stylesheet" href="/ui-polish.css"><link rel="stylesheet" href="/mobile-modal-fix.css"><script src="/meta-pixel.js" defer></script><script src="/locale-switcher.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script><script src="/mobile-camera-upload.js" defer></script>';
     const portugueseTags = lang === 'pt-BR' ? '<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script>' : '';
-    if (!localized.includes('/locale-switcher.js')) localized = localized.replace('</head>', `${sharedTags}${portugueseTags}</head>`);
+    const pricingTag = '<script src="/storefront-price.js" defer></script>';
+    localized = applyPricingToHtml(localized, storefrontPricing({ country, locale:lang }));
+    if (!localized.includes('/locale-switcher.js')) localized = localized.replace('</head>', `${sharedTags}${portugueseTags}${pricingTag}</head>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     res.send(localized);
@@ -183,7 +190,8 @@ app.use(async (req, res, next) => {
     const country=String(localeContext.country||'').replace(/[^A-Z]/g,'').slice(0,2);
     const sharedTags='<link rel="stylesheet" href="/locale-switcher.css"><link rel="stylesheet" href="/ui-polish.css"><link rel="stylesheet" href="/mobile-modal-fix.css"><script src="/meta-pixel.js" defer></script><script src="/locale-switcher.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script><script src="/mobile-camera-upload.js" defer></script>';
     const portugueseTags=lang==='pt-BR'?'<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script>':'';
-    const localized=normalizePublicBrand(html).replace(/<html\s+lang="[^"]*"/i,`<html lang="${lang}" data-locale="${lang}" data-country="${country}"`).replace('</head>',`${sharedTags}${portugueseTags}</head>`);
+    const pricingTag='<script src="/storefront-price.js" defer></script>';
+    const localized=applyPricingToHtml(normalizePublicBrand(html).replace(/<html\s+lang="[^"]*"/i,`<html lang="${lang}" data-locale="${lang}" data-country="${country}"`),storefrontPricing({country,locale:lang})).replace('</head>',`${sharedTags}${portugueseTags}${pricingTag}</head>`);
     res.status(404).type('html').send(localized);
   });
 });

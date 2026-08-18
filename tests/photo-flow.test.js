@@ -28,6 +28,7 @@ test('public pages include geo-aware locale switching and bilingual funnel copy'
   const checkout=read('public/crypto-checkout.js');
   assert.match(server,/resolveRequestLocale/);
   assert.match(server,/locale-switcher\.js/);
+  assert.match(server,/storefront-price\.js/);
   assert.match(mailer,/verificationSubject/);
   assert.match(mailer,/Confirme seu e-mail/);
   assert.match(mailer,/Confirm your email/);

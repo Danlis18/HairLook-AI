@@ -5,6 +5,7 @@ import { getSupabase } from '../lib/supabase.js';
 import { repo } from '../lib/repository.js';
 import { log } from '../lib/log.js';
 import { sendMetaPurchase } from '../lib/meta.js';
+import { cryptoPriceForLead } from '../lib/pricing.js';
 import { leadSession, sameOrigin, noStore } from '../middleware.js';
 
 const router = Router();
@@ -58,10 +59,10 @@ function expose(row){
   };
 }
 
-async function allocate(sb,network){
+async function allocate(sb,network,basePrice){
   // 4 decimal places maximum. The final two digits act as a compact order fingerprint.
   const scale=10000n;
-  const base=BigInt(Math.round(config.cryptoPriceUsdt*Number(scale)));
+  const base=BigInt(Math.round(basePrice*Number(scale)));
   const {data:active,error:activeError}=await sb.from('crypto_payment_intents').select('amount').eq('network',network).eq('status','pending').gt('expires_at',now());
   if(activeError)throw activeError;
   const usedTags=new Set((active||[]).map(x=>String(Math.round(Number(x.amount)*10000)%100).padStart(2,'0')));
@@ -79,19 +80,20 @@ async function allocate(sb,network){
 }
 async function makeIntent(lead,network){
   const n=nets[network];if(!n?.address)throw new Error('crypto_network_not_configured');
+  const basePrice=cryptoPriceForLead(lead);
   const sb=getSupabase();
   await sb.from('crypto_payment_intents').update({status:'expired',updated_at:now()}).eq('lead_id',lead.id).eq('status','pending').lte('expires_at',now());
   const {data:existing,error:e1}=await sb.from('crypto_payment_intents').select('*').eq('lead_id',lead.id).eq('network',network).eq('status','pending').gt('expires_at',now()).order('created_at',{ascending:false}).limit(1).maybeSingle();
   if(e1)throw e1;
   if(existing){
     const fraction=(String(existing.amount).split('.')[1]||'').replace(/0+$/,'');
-    if(fraction.length<=4)return existing;
+    if(fraction.length<=4&&Number(existing.base_amount).toFixed(2)===basePrice.toFixed(2))return existing;
     await sb.from('crypto_payment_intents').update({status:'canceled',updated_at:now()}).eq('id',existing.id).eq('status','pending');
   }
   await sb.from('crypto_payment_intents').update({status:'canceled',updated_at:now()}).eq('lead_id',lead.id).eq('status','pending');
   for(let i=0;i<5;i++){
-    const amount=await allocate(sb,network),expiresAt=new Date(Date.now()+config.cryptoIntentTtlMinutes*60000).toISOString();
-    const {data,error}=await sb.from('crypto_payment_intents').insert({lead_id:lead.id,network,asset:'USDT',address:n.address,base_amount:config.cryptoPriceUsdt.toFixed(6),amount,status:'pending',expires_at:expiresAt}).select('*').single();
+    const amount=await allocate(sb,network,basePrice),expiresAt=new Date(Date.now()+config.cryptoIntentTtlMinutes*60000).toISOString();
+    const {data,error}=await sb.from('crypto_payment_intents').insert({lead_id:lead.id,network,asset:'USDT',address:n.address,base_amount:basePrice.toFixed(6),amount,status:'pending',expires_at:expiresAt}).select('*').single();
     if(!error)return data;
     if(error.code!=='23505')throw error;
   }
@@ -165,15 +167,15 @@ async function detect(intent){if(!verifierReady(intent.network))return null;if(i
 async function markPaid(intent,match,request){
   if(!match?.hash)return intent;const sb=getSupabase();
   const {data:used,error:ue}=await sb.from('crypto_payment_intents').select('id').eq('tx_hash',match.hash).limit(1);if(ue)throw ue;if(used?.length&&used[0].id!==intent.id)return intent;
-  const paidAt=now(),receivedAmount=Number(match.receivedAmount||intent.amount);
+  const paidAt=now(),receivedAmount=Number(match.receivedAmount||intent.amount),baseAmount=Number(intent.base_amount);
   const {data:paid,error}=await sb.from('crypto_payment_intents').update({status:'paid',tx_hash:match.hash,from_address:match.from||null,confirmations:match.confirmations||0,paid_at:paidAt,updated_at:paidAt}).eq('id',intent.id).eq('status','pending').select('*').maybeSingle();
   if(error)throw error;if(!paid)return intent;
   const provider=`crypto_${intent.network}`;
   await repo.insertPaymentEventIfNew({provider,provider_event_id:`${intent.network}:${match.hash}`,order_id:match.hash,event_type:'payment_confirmed',payload:{network:intent.network,asset:'USDT',expectedAmount:Number(intent.amount),receivedAmount,to:intent.address,from:match.from||null,confirmations:match.confirmations||0,toleranceUsdt:config.cryptoPaymentToleranceUsdt},verified:true});
   await repo.upsertPayment({lead_id:intent.lead_id,provider,provider_order_id:match.hash,status:'paid',amount:receivedAmount,currency:'USDT',paid_at:paidAt,raw_payload:{network:intent.network,intent_id:intent.id,expected_amount:Number(intent.amount),received_amount:receivedAmount,to:intent.address,from:match.from||null,confirmations:match.confirmations||0}});
-  const updatedLead=await repo.updateLead(intent.lead_id,{payment_status:'paid',payment_provider:provider,payment_order_id:match.hash,payment_amount:receivedAmount,payment_currency:'USDT',paid_at:paidAt,generation_status:'manual_pending'});
+  const updatedLead=await repo.updateLead(intent.lead_id,{payment_status:'paid',payment_provider:provider,payment_order_id:match.hash,payment_amount:baseAmount,payment_currency:'USDT',paid_at:paidAt,generation_status:'manual_pending'});
   await repo.insertAnalytics({session_id:'crypto',lead_id:intent.lead_id,event_name:'payment_success',metadata:{provider,network:intent.network,txHash:match.hash,expectedAmount:Number(intent.amount),receivedAmount,currency:'USDT'}});
-  await sendMetaPurchase({lead:updatedLead,txHash:match.hash,request,value:config.cryptoPriceUsdt});
+  await sendMetaPurchase({lead:updatedLead,txHash:match.hash,request,value:baseAmount});
   return paid;
 }
 async function refresh(intent,request){
@@ -212,6 +214,6 @@ async function status(req,res,next,manual=false){try{
 }catch(e){next(e);}}
 router.get('/intents/:id/status',noStore,leadSession,(req,res,next)=>status(req,res,next,false));
 router.post('/intents/:id/check',sameOrigin,noStore,leadSession,(req,res,next)=>status(req,res,next,true));
-router.get('/networks',noStore,leadSession,(req,res)=>res.json({priceUsdt:config.cryptoPriceUsdt,ttlMinutes:config.cryptoIntentTtlMinutes,toleranceUsdt:config.cryptoPaymentToleranceUsdt,networks:Object.entries(nets).map(([id,n])=>({id,code:n.code,label:n.label,address:n.address,enabled:!!n.address,verificationReady:verifierReady(id)}))}));
+router.get('/networks',noStore,leadSession,(req,res)=>res.json({priceUsdt:cryptoPriceForLead(req.lead),ttlMinutes:config.cryptoIntentTtlMinutes,toleranceUsdt:config.cryptoPaymentToleranceUsdt,networks:Object.entries(nets).map(([id,n])=>({id,code:n.code,label:n.label,address:n.address,enabled:!!n.address,verificationReady:verifierReady(id)}))}));
 
 export default router;

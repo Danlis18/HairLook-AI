@@ -4,6 +4,7 @@ export const DEFAULT_LOCALE = 'en';
 export const PORTUGUESE_LOCALE = 'pt-BR';
 export const LOCALE_COOKIE = 'hairlook_locale';
 export const GEO_LOCALE_COOKIE = 'hairlook_geo_locale';
+export const GEO_COUNTRY_COOKIE = 'hairlook_geo_country';
 
 const PORTUGUESE_COUNTRIES = new Set(['BR', 'PT']);
 const COUNTRY_HEADERS = [
@@ -83,15 +84,18 @@ async function lookupCountry(ip) {
 }
 
 export async function resolveRequestLocale(req, { allowLookup = true } = {}) {
+  const headerCountry = countryFromHeaders(req);
+  const cachedCountry = normalizeCountry(req.cookies?.[GEO_COUNTRY_COOKIE]);
+  const knownCountry = headerCountry || cachedCountry;
   const queryLocale = normalizeLocale(req.query?.lang);
-  if (queryLocale) return { locale: queryLocale, country: countryFromHeaders(req), source: 'manual' };
+  if (queryLocale) return { locale: queryLocale, country: knownCountry, source: 'manual' };
 
   const preferredLocale = normalizeLocale(req.cookies?.[LOCALE_COOKIE]);
-  if (preferredLocale) return { locale: preferredLocale, country: countryFromHeaders(req), source: 'preference' };
+  if (preferredLocale) return { locale: preferredLocale, country: knownCountry, source: 'preference' };
 
   const cachedGeoLocale = normalizeLocale(req.cookies?.[GEO_LOCALE_COOKIE]);
-  const headerCountry = countryFromHeaders(req);
   if (headerCountry) return { locale: localeForCountry(headerCountry), country: headerCountry, source: 'header' };
+  if (cachedCountry) return { locale: localeForCountry(cachedCountry), country: cachedCountry, source: 'geo_cache' };
   if (cachedGeoLocale) return { locale: cachedGeoLocale, country: '', source: 'geo_cache' };
 
   const country = allowLookup ? await lookupCountry(clientIp(req)) : '';

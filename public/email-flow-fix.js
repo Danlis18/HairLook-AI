@@ -41,7 +41,10 @@ if(flowRoot)emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
   document.title=document.title.replaceAll(OLD,BRAND);
   document.querySelectorAll('[aria-label]').forEach(el=>{const v=el.getAttribute('aria-label');if(v?.includes(OLD))el.setAttribute('aria-label',v.replaceAll(OLD,BRAND));});
 
-  const saleHtml='<span class="sale-old">$24.99</span> <strong class="sale-current">$6.99</strong> <span class="sale-badge">72% OFF</span>';
+  const isUs=document.documentElement.dataset.country==='US';
+  const initialOld=isUs?'$53.54':'$24.99';
+  const initialCurrent=isUs?'$14.99':'$6.99';
+  const saleHtml=`<span class="sale-old">${initialOld}</span> <strong class="sale-current">${initialCurrent}</strong> <span class="sale-badge">72% OFF</span>`;
   const heroPrice=document.querySelector('.hero-trust .trust-item:first-child');
   if(heroPrice)heroPrice.innerHTML='<span class="trust-dot"></span>'+saleHtml+' one-time';
   const stripPrice=document.querySelector('.trust-grid .trust-cell:first-child');
@@ -51,7 +54,7 @@ if(flowRoot)emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
     const s=d.querySelector('summary');
     if(s?.textContent.includes('What exactly am I buying?')){
       const p=d.querySelector('p');
-      if(p)p.innerHTML='A one-time personalized digital hairstyle visualization service. Regular price <span class="sale-old">$24.99</span>; current promotional price <strong>$6.99 USD</strong>. No subscription or automatic renewal. See Product Details for the full description.';
+      if(p)p.innerHTML=`A one-time personalized digital hairstyle visualization service. Regular price <span class="sale-old">${initialOld}</span>; current promotional price <strong class="sale-current">${initialCurrent}</strong> USD. No subscription or automatic renewal. See Product Details for the full description.`;
     }
   });
 

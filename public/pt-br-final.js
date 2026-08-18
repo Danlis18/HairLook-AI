@@ -2,6 +2,7 @@
   document.documentElement.lang='pt-BR';
 
   const SUPPORT_EMAIL='support@mail.premium-hairstyle.com';
+  const usesUsPricing=document.documentElement.dataset.country==='US';
   const current=36.49, compare=129.90, saving=compare-current;
   const brl=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
   const titles={
@@ -62,11 +63,13 @@
       if(n.nodeValue.includes('results@example.com'))n.nodeValue=n.nodeValue.replaceAll('results@example.com',SUPPORT_EMAIL);
       if(n.nodeValue.includes('support@mail.premium-hairstyles.com'))n.nodeValue=n.nodeValue.replaceAll('support@mail.premium-hairstyles.com',SUPPORT_EMAIL);
       if(n.nodeValue.includes('Paddle'))n.nodeValue=n.nodeValue.replaceAll('Paddle','Hotmart');
-      if(n.nodeValue.trim()==='USD')n.nodeValue=n.nodeValue.replace('USD','BRL');
-      else if(n.nodeValue.includes('$6.99 USD'))n.nodeValue=n.nodeValue.replaceAll('$6.99 USD','R$ 36,49');
-      else if(n.nodeValue.includes('$6.99'))n.nodeValue=n.nodeValue.replaceAll('$6.99','R$ 36,49');
-      else if(n.nodeValue.includes('$24.99 USD'))n.nodeValue=n.nodeValue.replaceAll('$24.99 USD','R$ 129,90');
-      else if(n.nodeValue.includes('$24.99'))n.nodeValue=n.nodeValue.replaceAll('$24.99','R$ 129,90');
+      if(!usesUsPricing){
+        if(n.nodeValue.trim()==='USD')n.nodeValue=n.nodeValue.replace('USD','BRL');
+        else if(n.nodeValue.includes('$6.99 USD'))n.nodeValue=n.nodeValue.replaceAll('$6.99 USD','R$ 36,49');
+        else if(n.nodeValue.includes('$6.99'))n.nodeValue=n.nodeValue.replaceAll('$6.99','R$ 36,49');
+        else if(n.nodeValue.includes('$24.99 USD'))n.nodeValue=n.nodeValue.replaceAll('$24.99 USD','R$ 129,90');
+        else if(n.nodeValue.includes('$24.99'))n.nodeValue=n.nodeValue.replaceAll('$24.99','R$ 129,90');
+      }
     });
     document.querySelectorAll('[aria-label],[alt],[title],[placeholder]').forEach(el=>{
       for(const attr of ['aria-label','alt','title','placeholder']){
@@ -78,11 +81,12 @@
   const descriptions={
     '/':'Serviço privado de visualização de penteados a partir da sua foto. Pagamento único e entrega dos resultados no e-mail verificado.',
     '/product':'Detalhes da Coleção Personalizada de Penteados da PremiumHairstyles AI, incluindo preço, entrega, privacidade, limitações e suporte.',
-    '/price':'Preço da PremiumHairstyles AI no Brasil: oferta promocional de R$ 36,49 em pagamento único, sem assinatura.'
+    '/price':usesUsPricing?'Preço da PremiumHairstyles AI nos Estados Unidos: oferta promocional de US$ 14,99 em pagamento único, sem assinatura.':'Preço da PremiumHairstyles AI no Brasil e em Portugal: oferta promocional de R$ 36,49 em pagamento único, sem assinatura.'
   };
   const meta=document.querySelector('meta[name="description"]');if(meta&&descriptions[location.pathname])meta.content=descriptions[location.pathname];
 
   const applyPrice=()=>{
+    if(usesUsPricing)return;
     document.querySelectorAll('[data-price]').forEach(el=>el.textContent='36,49');
     document.querySelectorAll('.price-currency').forEach(el=>el.textContent='BRL');
     document.querySelectorAll('.price-old,.product-price .old,.old-price').forEach(el=>el.textContent=brl(compare));

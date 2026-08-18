@@ -1,5 +1,6 @@
 (() => {
-  const current=36.50, compare=129.90, saving=compare-current;
+  const usesUsPricing=document.documentElement.dataset.country==='US';
+  const current=36.49, compare=129.90, saving=compare-current;
   const brl=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
   document.documentElement.lang='pt-BR';
 
@@ -45,7 +46,8 @@
       .replace(/Based on your 7 answers, these men's hairstyle directions are the strongest starting points\. Your final paid previews are created from your own uploaded photo\./g,'Com base nas suas 7 respostas, estas sugestões masculinas são os melhores pontos de partida. As prévias finais do seu pedido serão preparadas usando a sua própria foto.')
       .replace(/or choose from your device · up to ([^\n]+)/g,'ou escolha no seu dispositivo · até $1')
       .replace(/We sent a 6-digit code to/g,'Enviamos um código de 6 dígitos para')
-      .replace(/This code expires in ([^.]+)\. Never share it with support or anyone else\./g,'Este código expira em $1. Nunca compartilhe com o suporte ou com outras pessoas.')
+      .replace(/This code expires in ([^.]+)\. Never share it with support or anyone else\./g,'Este código expira em $1. Nunca compartilhe com o suporte ou com outras pessoas.');
+    if(!usesUsPricing)out=out
       .replace(/\$24\.99\s*USD/g,brl(compare)).replace(/\$24\.99/g,brl(compare))
       .replace(/\$6\.99\s*USD/g,brl(current)).replace(/\$6\.99/g,brl(current))
       .replace(/Save \$18\s*·\s*72% OFF/gi,`Economize ${brl(saving)} · 72% OFF`);
@@ -64,7 +66,8 @@
 
   function setText(selector,value){document.querySelectorAll(selector).forEach(el=>{if(el.textContent!==value)el.textContent=value;});}
   function fixPrices(){
-    setText('[data-price]','36,50');
+    if(usesUsPricing)return;
+    setText('[data-price]','36,49');
     setText('.price-currency','BRL');
     setText('.price-old,.product-price .old,.old-price',brl(compare));
     setText('.checkout-sale-badge,.sale-callout',`Economize ${brl(saving)} · 72% OFF`);

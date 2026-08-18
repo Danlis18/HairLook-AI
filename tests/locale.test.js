@@ -44,6 +44,16 @@ test('saved preference takes priority and country headers drive automatic locale
   assert.deepEqual(rest,{locale:'en',country:'JP',source:'header'});
 });
 
+test('cached geo country survives language switching and later requests without a geo header',async()=>{
+  const cookies={hairlook_geo_country:'US',hairlook_geo_locale:'en'};
+  const manual=await resolveRequestLocale(request({query:{lang:'pt-BR'},cookies}),{allowLookup:false});
+  assert.deepEqual(manual,{locale:'pt-BR',country:'US',source:'manual'});
+  const preferred=await resolveRequestLocale(request({cookies:{...cookies,hairlook_locale:'en'}}),{allowLookup:false});
+  assert.deepEqual(preferred,{locale:'en',country:'US',source:'preference'});
+  const automatic=await resolveRequestLocale(request({cookies}),{allowLookup:false});
+  assert.deepEqual(automatic,{locale:'en',country:'US',source:'geo_cache'});
+});
+
 test('lead locale is persisted inside the compatible quiz_answers JSON',()=>{
   assert.equal(localeFromLead({quiz_answers:{_locale:'pt-BR'}}),'pt-BR');
   assert.equal(localeFromLead({quiz_answers:{_locale:'en'}}),'en');

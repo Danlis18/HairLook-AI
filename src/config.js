@@ -28,6 +28,8 @@ export const config = Object.freeze({
   priceDisplayUsd: isBrazilStorefront ? brlPrice : usdPrice,
   priceDisplayBrl: brlPrice,
   priceDisplayUsdSaved: usdPrice,
+  priceDisplayUsUsd: process.env.PRICE_DISPLAY_US_USD || '14.99',
+  usDiscountPercent: Math.min(99, Math.max(0, number(process.env.US_DISCOUNT_PERCENT, 72))),
   compareAtPriceUsd: process.env.COMPARE_AT_PRICE_USD || '24.99',
   compareAtPriceBrl: process.env.COMPARE_AT_PRICE_BRL || '129.90',
   generationTargetCount: integer(process.env.GENERATION_TARGET_COUNT, 30),

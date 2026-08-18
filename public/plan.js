@@ -1,7 +1,10 @@
 const $=q=>document.querySelector(q);
 const sessionId=sessionStorage.getItem('hairlook_session_id')||crypto.randomUUID();
 const locale=document.documentElement.lang.toLowerCase().startsWith('pt')?'pt-BR':'en';
-let cfg={priceDisplayUsd:locale==='pt-BR'?'36.49':'6.99',siteLocale:locale,siteCurrency:locale==='pt-BR'?'BRL':'USD',generationTargetCount:30,demoMode:false};
+const isUs=document.documentElement.dataset.country==='US';
+let cfg=isUs
+  ? {priceDisplayUsd:'14.99',compareAtPrice:'53.54',priceSavings:'38.55',discountPercent:72,siteLocale:locale,siteCurrency:'USD',generationTargetCount:30,demoMode:false}
+  : {priceDisplayUsd:locale==='pt-BR'?'36.49':'6.99',compareAtPrice:locale==='pt-BR'?'129.90':'24.99',priceSavings:locale==='pt-BR'?'93.41':'18.00',discountPercent:72,siteLocale:locale,siteCurrency:locale==='pt-BR'?'BRL':'USD',generationTargetCount:30,demoMode:false};
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const C={
   en:{security:'Secure payment',preparing:'Preparing order',almost:'Your order is almost ready.',linking:'We are securely connecting your photo and verified email.',items:['Photo ready','Email verified','Secure order ready'],offer:'SPECIAL OFFER',heading:'Your Personalized Collection',summary:'Hairstyle previews prepared from your uploaded photo.',old:'$24.99',sale:'72% OFF · SAVE $18.00',note:'One-time payment<br>No subscription',includes:['✓ Personalized previews','✓ Multiple hairstyles','✓ Private email delivery'],agreement:'I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/refund" target="_blank">Refund Policy</a>.',choose:'Choose payment method →',protected:'🔒 Protected payment. Choose card or cryptocurrency.',accept:'Confirm the Terms and Refund Policy before continuing to payment.',opening:'Opening secure payment…',errorTitle:'Something went wrong',refresh:'Refresh this page.',safe:'Your verified email and uploaded photo are safe. If the problem continues, contact support.'},
@@ -17,6 +20,21 @@ function applyCopy(){
   document.title=locale==='pt-BR'?'Seu pedido — PremiumHairstyles AI':'Your Order — PremiumHairstyles AI';
 }
 
+function applyPrice(){
+  const currency=cfg.siteCurrency==='BRL'?'BRL':'USD';
+  const region=currency==='BRL'?'pt-BR':'en-US';
+  const number=value=>Number(value).toLocaleString(region,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const money=value=>new Intl.NumberFormat(region,{style:'currency',currency,minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value));
+  setText('#oldPrice',money(cfg.compareAtPrice));
+  setText('#saleBadge',locale==='pt-BR'
+    ? `${cfg.discountPercent}% OFF · ECONOMIZE ${money(cfg.priceSavings)}`
+    : `${cfg.discountPercent}% OFF · SAVE ${money(cfg.priceSavings)}`);
+  const priceEl=$('[data-price]'),prefix=$('.price-prefix'),currencyEl=$('.price-currency');
+  if(priceEl)priceEl.textContent=number(cfg.priceDisplayUsd);
+  if(prefix)prefix.textContent=currency==='BRL'?'R$ ':'$';
+  if(currencyEl)currencyEl.textContent=currency;
+}
+
 async function init(){
   applyCopy();
   const [configRes,meRes]=await Promise.all([fetch('/api/config',{cache:'no-store'}),fetch('/api/me',{cache:'no-store'})]);
@@ -24,10 +42,7 @@ async function init(){
   const me=await meRes.json().catch(()=>({authenticated:false}));
   if(!meRes.ok||!me.authenticated){location.href='/signin?next=personal-plan';return;}
   if(me.lead.paymentStatus==='paid'){location.href='/dashboard';return;}
-  const amount=Number(cfg.priceDisplayUsd||6.99),priceEl=$('[data-price]'),prefix=$('.price-prefix'),currency=$('.price-currency');
-  if(priceEl)priceEl.textContent=locale==='pt-BR'?amount.toFixed(2).replace('.',','):amount.toFixed(2);
-  if(prefix)prefix.textContent=locale==='pt-BR'?'R$ ':'$';
-  if(currency)currency.textContent=cfg.siteCurrency||(locale==='pt-BR'?'BRL':'USD');
+  applyPrice();
   animatePlan();
 }
 

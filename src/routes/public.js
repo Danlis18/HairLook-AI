@@ -9,6 +9,7 @@ import { randomToken, tokenHash, hashIp, randomOtpCode, sha256, safeEqual } from
 import { signLeadForCheckout } from '../lib/paddle.js';
 import { sendMagicLink, sendVerificationCode } from '../lib/mailer.js';
 import { localeFromBody, localeFromLead, normalizeCountry, resolveRequestLocale } from '../lib/locale.js';
+import { cryptoPriceForLead, storefrontPricing } from '../lib/pricing.js';
 import { leadSession, optionalLeadSession, sameOrigin, noStore } from '../middleware.js';
 
 const router = Router();
@@ -38,16 +39,20 @@ async function issueEmailChallenge(lead, locale = localeFromLead(lead)) {
   const sent = await sendVerificationCode({ to:lead.email, code, locale });
   return sent.devCode;
 }
-function clientConfig(settings = {}, localeContext = {locale:'en',country:''}) {
-  const portuguese = localeContext.locale === 'pt-BR';
+function clientConfig(settings = {}, localeContext = {locale:'en',country:''}, leadCountry = '') {
+  const pricing = storefrontPricing({ country:normalizeCountry(leadCountry) || localeContext.country, locale:localeContext.locale });
   return {
     productName: config.productName,
     supportEmail: settings.support_email || config.supportEmail,
     supportPhone: config.supportPhone,
-    priceDisplayUsd: portuguese ? config.priceDisplayBrl : config.priceDisplayUsdSaved,
+    priceDisplayUsd: pricing.current,
+    compareAtPrice: pricing.compareAt,
+    priceSavings: pricing.savings,
+    discountPercent: pricing.discountPercent,
+    pricePrefix: pricing.prefix,
     siteLocale: localeContext.locale,
-    siteCountry: localeContext.country || '',
-    siteCurrency: portuguese ? 'BRL' : 'USD',
+    siteCountry: pricing.country || localeContext.country || '',
+    siteCurrency: pricing.currency,
     generationTargetCount: Number(settings.generation_target_count || config.generationTargetCount),
     checkoutEnabled: String(settings.checkout_enabled ?? config.checkoutEnabled) !== 'false',
     demoMode: config.demoMode,
@@ -59,7 +64,7 @@ function clientConfig(settings = {}, localeContext = {locale:'en',country:''}) {
   };
 }
 
-router.get('/config', async (req,res,next) => { try { res.json(clientConfig(await repo.getSettings(), await resolveRequestLocale(req))); } catch (e) { next(e); } });
+router.get('/config', noStore, optionalLeadSession, async (req,res,next) => { try { res.json(clientConfig(await repo.getSettings(), await resolveRequestLocale(req), req.lead?.country)); } catch (e) { next(e); } });
 router.get('/locale', noStore, async (req,res,next) => { try { res.json(await resolveRequestLocale(req)); } catch (e) { next(e); } });
 router.post('/analytics', sameOrigin, async (req,res,next) => { try {
   const body = z.object({ sessionId:z.string().max(120), leadId:z.string().uuid().optional().nullable(), eventName:z.string().regex(/^[a-z0-9_]{2,80}$/), metadata:z.record(z.string(),z.any()).optional() }).parse(req.body);
@@ -75,7 +80,9 @@ router.post('/leads', sameOrigin, upload.single('photo'), async (req,res,next) =
   if (String(req.body.consent) !== 'true') return res.status(400).json({ error:'consent_required' });
   const rawQuiz = parseJsonField(req.body.quiz, {});
   const locale = localeFromBody(req.body.locale || rawQuiz?._locale);
-  const country = normalizeCountry(req.body.country);
+  const localeContext = await resolveRequestLocale(req);
+  const submittedCountry = normalizeCountry(req.body.country);
+  const country = localeContext.country || (submittedCountry === 'US' ? '' : submittedCountry);
   const quiz = { ...quizSchema.parse(rawQuiz), _locale:locale, _quizEnabled:rawQuiz?._quizEnabled === true };
   const utm = z.record(z.string(),z.any()).parse(parseJsonField(req.body.utm, {}));
   let meta;
@@ -172,7 +179,7 @@ router.post('/checkout', sameOrigin, leadSession, async (req,res,next) => { try 
   if (!config.demoMode && (!config.paddleClientToken || !config.paddlePriceId || !config.paddleWebhookSecret)) return res.status(503).json({ error:'checkout_not_configured' });
 
   await repo.updateLead(req.lead.id, { payment_status:'checkout_started', payment_provider:'paddle' });
-  await repo.insertAnalytics({ session_id:req.body?.sessionId || 'unknown', lead_id:req.lead.id, event_name:'purchase_terms_accepted', metadata:{ product:'personalized_hairstyle_collection', price:config.priceDisplayUsd, provider:'paddle' } });
+  await repo.insertAnalytics({ session_id:req.body?.sessionId || 'unknown', lead_id:req.lead.id, event_name:'purchase_terms_accepted', metadata:{ product:'personalized_hairstyle_collection', price:cryptoPriceForLead(req.lead), provider:'paddle' } });
   await repo.insertAnalytics({ session_id:req.body?.sessionId || 'unknown', lead_id:req.lead.id, event_name:'checkout_start', metadata:{ provider:'paddle' } });
   if (config.demoMode) return res.json({ demo:true, checkoutUrl:`/demo-checkout?lead=${encodeURIComponent(req.lead.id)}` });
 
@@ -187,7 +194,7 @@ router.post('/checkout', sameOrigin, leadSession, async (req,res,next) => { try 
 
 router.post('/demo/pay', sameOrigin, leadSession, async (req,res,next) => { try {
   if (!config.demoMode) return res.status(404).end();
-  const price = Number(config.priceDisplayUsd);
+  const price = cryptoPriceForLead(req.lead);
   await repo.updateLead(req.lead.id, { payment_status:'paid', payment_order_id:`DEMO-${Date.now()}`, payment_amount:price, payment_currency:'USD', paid_at:new Date().toISOString(), generation_status:'manual_pending' });
   await repo.upsertPayment({ lead_id:req.lead.id, provider:'demo', provider_order_id:`DEMO-${req.lead.id}`, status:'paid', amount:price, currency:'USD', paid_at:new Date().toISOString(), raw_payload:{ demo:true } });
   await repo.insertAnalytics({ session_id:req.body?.sessionId || 'demo', lead_id:req.lead.id, event_name:'payment_success', metadata:{ provider:'demo' } });
@@ -206,7 +213,7 @@ router.get('/dashboard', noStore, leadSession, async (req,res,next) => { try {
   const purchase = isPaid && orderId ? {
     eventId:isCrypto ? `crypto:${orderId}` : `purchase:${orderId}`,
     orderId,
-    value:isCrypto ? Number(config.cryptoPriceUsdt) : Number(req.lead.payment_amount || config.priceDisplayUsd),
+    value:isCrypto ? cryptoPriceForLead(req.lead) : Number(req.lead.payment_amount || cryptoPriceForLead(req.lead)),
     currency:isCrypto ? 'USD' : String(req.lead.payment_currency || config.siteCurrency || 'USD').toUpperCase()
   } : null;
   res.json({ lead:{ id:req.lead.id, email:req.lead.email, paymentStatus:req.lead.payment_status, generationStatus:req.lead.generation_status, profile:{ ageRange:req.lead.age_range, currentLength:req.lead.current_length, desiredLength:req.lead.desired_length, texture:req.lead.texture, currentColor:req.lead.current_color, desiredColors:req.lead.desired_colors, styleGoals:req.lead.style_goals, grayPreference:req.lead.gray_preference } }, purchase, targetCount, results:safe });
