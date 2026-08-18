@@ -4,6 +4,7 @@ import { repo } from '../lib/repository.js';
 import { generateHairEdit } from '../lib/ai.js';
 import { putResult, deleteOriginal, deleteResult } from '../lib/storage.js';
 import { sendResultsReady } from '../lib/mailer.js';
+import { localeFromLead } from '../lib/locale.js';
 import { log } from '../lib/log.js';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -42,7 +43,7 @@ export async function processOneJob(workerId) {
     const status = finished ? (stats.failed > 0 ? 'partial' : 'completed') : 'processing';
     const updated = await repo.updateLead(lead.id, { generation_status: status });
     if (finished && !updated?.results_notified_at) {
-      await sendResultsReady({ to: lead.email }).catch(error => log.warn('results_email_failed', { leadId: lead.id, error: error.message }));
+      await sendResultsReady({ to: lead.email, locale:localeFromLead(lead) }).catch(error => log.warn('results_email_failed', { leadId: lead.id, error: error.message }));
       await repo.updateLead(lead.id, { results_notified_at: new Date().toISOString() });
     }
     log.info('generation_completed', { leadId: lead.id, jobId: job.id, resultCount, status });

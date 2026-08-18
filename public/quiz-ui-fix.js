@@ -1,4 +1,5 @@
 (() => {
+  if(typeof QUIZ_ENABLED!=='undefined' && !QUIZ_ENABLED)return;
   // Run after app.js + email-flow-fix.js. Keep the consultation concise.
   const removeQuestion = (key) => {
     const i = questions.findIndex(q => q.key === key);

@@ -8,15 +8,16 @@ import { putOriginal, signedResultUrl, deleteOriginal, deleteResult } from '../l
 import { randomToken, tokenHash, hashIp, randomOtpCode, sha256, safeEqual } from '../lib/crypto.js';
 import { signLeadForCheckout } from '../lib/paddle.js';
 import { sendMagicLink, sendVerificationCode } from '../lib/mailer.js';
+import { localeFromBody, localeFromLead, normalizeCountry, resolveRequestLocale } from '../lib/locale.js';
 import { leadSession, optionalLeadSession, sameOrigin, noStore } from '../middleware.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 1 } });
 const emailSchema = z.string().trim().toLowerCase().email().max(254);
 const quizSchema = z.object({
-  gender: z.string().max(40), ageRange: z.string().max(30), currentLength: z.string().max(40), desiredLength: z.string().max(60),
-  texture: z.string().max(40), currentColor: z.string().max(40), desiredColors: z.array(z.string().max(40)).max(8), styleGoals: z.array(z.string().max(60)).max(8),
-  stylePersonality: z.string().max(50), maintenanceLevel: z.string().max(50), bangsPreference: z.string().max(50), grayPreference: z.string().max(60)
+  gender: z.string().max(40).default('Not provided'), ageRange: z.string().max(30).default('Not provided'), currentLength: z.string().max(40).default('Not provided'), desiredLength: z.string().max(60).default('Not provided'),
+  texture: z.string().max(40).default('Not provided'), currentColor: z.string().max(40).default('Not provided'), desiredColors: z.array(z.string().max(40)).max(8).default([]), styleGoals: z.array(z.string().max(60)).max(8).default([]),
+  stylePersonality: z.string().max(50).default('Not provided'), maintenanceLevel: z.string().max(50).default('Not provided'), bangsPreference: z.string().max(50).default('Not provided'), grayPreference: z.string().max(60).default('Not provided')
 });
 
 function parseJsonField(value, fallback = {}) {
@@ -30,19 +31,23 @@ async function createLeadSession(res, leadId) {
   await repo.createLeadSession(leadId, tokenHash(raw), expires);
   res.cookie('hair_lead_session', raw, cookieOptions());
 }
-async function issueEmailChallenge(lead) {
+async function issueEmailChallenge(lead, locale = localeFromLead(lead)) {
   const code = randomOtpCode();
   const expiresAt = new Date(Date.now() + config.emailVerificationTtlMinutes * 60_000).toISOString();
   await repo.createEmailChallenge({ leadId:lead.id, email:lead.email, codeHash:sha256(code), expiresAt, maxAttempts:config.emailVerificationMaxAttempts });
-  const sent = await sendVerificationCode({ to:lead.email, code });
+  const sent = await sendVerificationCode({ to:lead.email, code, locale });
   return sent.devCode;
 }
-function clientConfig(settings = {}) {
+function clientConfig(settings = {}, localeContext = {locale:'en',country:''}) {
+  const portuguese = localeContext.locale === 'pt-BR';
   return {
     productName: config.productName,
     supportEmail: settings.support_email || config.supportEmail,
     supportPhone: config.supportPhone,
-    priceDisplayUsd: config.priceDisplayUsd,
+    priceDisplayUsd: portuguese ? config.priceDisplayBrl : config.priceDisplayUsdSaved,
+    siteLocale: localeContext.locale,
+    siteCountry: localeContext.country || '',
+    siteCurrency: portuguese ? 'BRL' : 'USD',
     generationTargetCount: Number(settings.generation_target_count || config.generationTargetCount),
     checkoutEnabled: String(settings.checkout_enabled ?? config.checkoutEnabled) !== 'false',
     demoMode: config.demoMode,
@@ -54,7 +59,8 @@ function clientConfig(settings = {}) {
   };
 }
 
-router.get('/config', async (req,res,next) => { try { res.json(clientConfig(await repo.getSettings())); } catch (e) { next(e); } });
+router.get('/config', async (req,res,next) => { try { res.json(clientConfig(await repo.getSettings(), await resolveRequestLocale(req))); } catch (e) { next(e); } });
+router.get('/locale', noStore, async (req,res,next) => { try { res.json(await resolveRequestLocale(req)); } catch (e) { next(e); } });
 router.post('/analytics', sameOrigin, async (req,res,next) => { try {
   const body = z.object({ sessionId:z.string().max(120), leadId:z.string().uuid().optional().nullable(), eventName:z.string().regex(/^[a-z0-9_]{2,80}$/), metadata:z.record(z.string(),z.any()).optional() }).parse(req.body);
   await repo.insertAnalytics({ session_id:body.sessionId, lead_id:body.leadId || null, event_name:body.eventName, metadata:body.metadata || {} });
@@ -67,7 +73,10 @@ router.post('/leads', sameOrigin, upload.single('photo'), async (req,res,next) =
   if (!req.file) return res.status(400).json({ error:'photo_required' });
   const email = emailSchema.parse(req.body.email);
   if (String(req.body.consent) !== 'true') return res.status(400).json({ error:'consent_required' });
-  const quiz = quizSchema.parse(parseJsonField(req.body.quiz, {}));
+  const rawQuiz = parseJsonField(req.body.quiz, {});
+  const locale = localeFromBody(req.body.locale || rawQuiz?._locale);
+  const country = normalizeCountry(req.body.country);
+  const quiz = { ...quizSchema.parse(rawQuiz), _locale:locale, _quizEnabled:rawQuiz?._quizEnabled === true };
   const utm = z.record(z.string(),z.any()).parse(parseJsonField(req.body.utm, {}));
   let meta;
   try { meta = await sharp(req.file.buffer, { failOn:'error' }).metadata(); } catch { return res.status(400).json({ error:'invalid_image' }); }
@@ -79,7 +88,7 @@ router.post('/leads', sameOrigin, upload.single('photo'), async (req,res,next) =
     desired_colors:quiz.desiredColors, style_goals:quiz.styleGoals, style_personality:quiz.stylePersonality, maintenance_level:quiz.maintenanceLevel, bangs_preference:quiz.bangsPreference, gray_preference:quiz.grayPreference,
     quiz_answers:quiz, upload_status:'processing', payment_status:'unpaid', payment_provider:'paddle', generation_status:'not_started', source:utm.source || utm.utm_source || null,
     utm_source:utm.utm_source || null, utm_medium:utm.utm_medium || null, utm_campaign:utm.utm_campaign || null, utm_content:utm.utm_content || null, utm_term:utm.utm_term || null,
-    landing_url:req.body.landingUrl || null, ip_hash:hashIp(req.ip), country:null, consent_at:new Date().toISOString()
+    landing_url:req.body.landingUrl || null, ip_hash:hashIp(req.ip), country:country || null, consent_at:new Date().toISOString()
   });
   try {
     const key = await putOriginal(lead.id, cleaned, 'image/jpeg');
@@ -91,7 +100,7 @@ router.post('/leads', sameOrigin, upload.single('photo'), async (req,res,next) =
   await createLeadSession(res, lead.id);
   await repo.insertAnalytics({ session_id:req.body.sessionId || 'unknown', lead_id:lead.id, event_name:'upload_complete', metadata:{ format:meta.format, width:meta.width, height:meta.height } });
   if (config.emailVerificationEnabled) {
-    const devCode = await issueEmailChallenge(lead);
+    const devCode = await issueEmailChallenge(lead, locale);
     return res.status(201).json({ leadId:lead.id, next:'/personal-plan', emailVerificationRequired:true, ...(config.demoMode ? { devCode } : {}) });
   }
   res.status(201).json({ leadId:lead.id, next:'/personal-plan', emailVerificationRequired:false });
@@ -219,7 +228,7 @@ router.post('/auth/request-link', sameOrigin, async (req,res,next) => { try {
   const expiresAt = new Date(Date.now() + config.magicLinkTtlMinutes * 60_000).toISOString();
   await repo.createMagicLink({ email, purpose:'user', leadId:lead.id, tokenHash:tokenHash(raw), expiresAt });
   const url = `${config.appUrl}/auth/magic?token=${encodeURIComponent(raw)}`;
-  const sent = await sendMagicLink({ to:email, url });
+  const sent = await sendMagicLink({ to:email, url, locale:localeFromLead(lead, localeFromBody(req.body.locale)) });
   res.json(config.demoMode ? { ...generic, devMagicLink:sent.devUrl } : generic);
 } catch (e) { next(e); } });
 

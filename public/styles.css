@@ -600,3 +600,17 @@ img, video { display: block; max-width: 100%; }
 .color-direction-card{min-height:100%}
 .color-direction-visual{aspect-ratio:4/5;display:grid;grid-template-columns:1fr 1fr;background:var(--warm);overflow:hidden}
 .color-direction-visual span{background:radial-gradient(circle at 38% 35%,color-mix(in srgb,var(--sw),white 22%),var(--sw) 62%,color-mix(in srgb,var(--sw),black 18%));}
+@keyframes uploadCtaPulse {
+  0%,100% { transform: translateZ(0) scale(1); box-shadow: 0 10px 24px rgba(24,55,45,.22), 0 0 0 0 rgba(24,55,45,.30); }
+  48% { transform: translateZ(0) scale(1.035); box-shadow: 0 14px 30px rgba(24,55,45,.28), 0 0 0 11px rgba(24,55,45,0); }
+}
+.primary-upload-cta {
+  animation: uploadCtaPulse 1.85s cubic-bezier(.4,0,.2,1) infinite;
+  transform-origin: center;
+  will-change: transform,box-shadow;
+}
+.primary-upload-cta:hover,
+.primary-upload-cta:focus-visible { animation-play-state: paused; transform: translateY(-2px) scale(1.025); }
+@media (prefers-reduced-motion: reduce) {
+  .primary-upload-cta { animation: none; }
+}

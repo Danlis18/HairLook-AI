@@ -7,6 +7,7 @@ import { config } from '../config.js';
 import { repo } from '../lib/repository.js';
 import { randomToken, tokenHash, safeEqual } from '../lib/crypto.js';
 import { sendMagicLink, sendResultsReady } from '../lib/mailer.js';
+import { localeFromLead } from '../lib/locale.js';
 import { signedOriginalUrl, signedResultUrl, putResult, deleteOriginal, deleteResult } from '../lib/storage.js';
 import { adminSession, sameOrigin, noStore } from '../middleware.js';
 
@@ -162,7 +163,7 @@ router.post('/customers/:id/send-results', sameOrigin, adminSession, async (req,
     const id = uuidSchema.parse(req.params.id);
     const lead = await repo.getLead(id);
     if (!lead) return res.status(404).json({ error: 'not_found' });
-    await sendResultsReady({ to: lead.email });
+    await sendResultsReady({ to: lead.email, locale:localeFromLead(lead) });
     await repo.audit({ adminEmail: req.admin.email, action: 'results_email_send', targetType: 'customer', targetId: id });
     res.json({ ok: true });
   } catch (error) { next(error); }
@@ -213,7 +214,7 @@ router.post('/customers/:id/complete', sameOrigin, adminSession, async (req, res
     if (!count) return res.status(400).json({ error: 'no_results' });
     const updated = await repo.updateLead(id, { generation_status: 'completed' });
     if (!updated?.results_notified_at) {
-      await sendResultsReady({ to: lead.email }).catch(() => {});
+      await sendResultsReady({ to: lead.email, locale:localeFromLead(lead) }).catch(() => {});
       await repo.updateLead(id, { results_notified_at: new Date().toISOString() });
     }
     await repo.audit({ adminEmail: req.admin.email, action: 'fulfillment_complete', targetType: 'customer', targetId: id, metadata: { count } });

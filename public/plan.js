@@ -1,82 +1,50 @@
 const $=q=>document.querySelector(q);
 const sessionId=sessionStorage.getItem('hairlook_session_id')||crypto.randomUUID();
-let cfg={priceDisplayUsd:'36.49',siteLocale:'pt-BR',siteCurrency:'BRL',generationTargetCount:30,demoMode:false};
+const locale=document.documentElement.lang.toLowerCase().startsWith('pt')?'pt-BR':'en';
+let cfg={priceDisplayUsd:locale==='pt-BR'?'36.49':'6.99',siteLocale:locale,siteCurrency:locale==='pt-BR'?'BRL':'USD',generationTargetCount:30,demoMode:false};
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const C={
+  en:{security:'Secure payment',preparing:'Preparing order',almost:'Your order is almost ready.',linking:'We are securely connecting your photo and verified email.',items:['Photo ready','Email verified','Secure order ready'],offer:'SPECIAL OFFER',heading:'Your Personalized Collection',summary:'Hairstyle previews prepared from your uploaded photo.',old:'$24.99',sale:'72% OFF · SAVE $18.00',note:'One-time payment<br>No subscription',includes:['✓ Personalized previews','✓ Multiple hairstyles','✓ Private email delivery'],agreement:'I agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/refund" target="_blank">Refund Policy</a>.',choose:'Choose payment method →',protected:'🔒 Protected payment. Choose card or cryptocurrency.',accept:'Confirm the Terms and Refund Policy before continuing to payment.',opening:'Opening secure payment…',errorTitle:'Something went wrong',refresh:'Refresh this page.',safe:'Your verified email and uploaded photo are safe. If the problem continues, contact support.'},
+  'pt-BR':{security:'Pagamento seguro',preparing:'Preparando pedido',almost:'Seu pedido está quase pronto.',linking:'Estamos vinculando sua foto ao seu e-mail verificado com segurança.',items:['Foto pronta','E-mail verificado','Pedido seguro pronto'],offer:'OFERTA ESPECIAL',heading:'Sua Coleção Personalizada',summary:'Prévias de penteados preparadas com a foto enviada.',old:'R$ 129,90',sale:'72% OFF · ECONOMIZE R$ 93,41',note:'Pagamento único<br>Sem assinatura',includes:['✓ Prévias personalizadas','✓ Vários penteados','✓ Entrega privada por e-mail'],agreement:'Concordo com os <a href="/terms" target="_blank">Termos</a> e a <a href="/refund" target="_blank">Política de Reembolso</a>.',choose:'Escolher forma de pagamento →',protected:'🔒 Pagamento protegido. Escolha cartão ou criptomoeda.',accept:'Confirme os Termos e a Política de Reembolso antes de continuar para o pagamento.',opening:'Abrindo pagamento seguro…',errorTitle:'Algo deu errado',refresh:'Atualize esta página.',safe:'Seu e-mail verificado e sua foto enviada estão seguros. Se o problema continuar, entre em contato com o suporte.'}
+}[locale];
+
+function setText(selector,value){const node=$(selector);if(node)node.textContent=value;}
+function applyCopy(){
+  setText('#securityNote',C.security);setText('#analysisEyebrow',C.preparing);setText('#analysisTitle',C.almost);setText('#analysisMessage',C.linking);
+  document.querySelectorAll('#analysisList .analysis-item span').forEach((node,index)=>node.textContent=C.items[index]||'');
+  setText('#offerBadge',C.offer);setText('#orderHeading',C.heading);setText('#orderSummary',C.summary);setText('#oldPrice',C.old);setText('#saleBadge',C.sale);$('#priceNote').innerHTML=C.note;
+  setText('#includeOne',C.includes[0]);setText('#includeTwo',C.includes[1]);setText('#includeThree',C.includes[2]);$('#purchaseAgreementCopy').innerHTML=C.agreement;setText('#checkoutButton',C.choose);setText('#checkoutNote',C.protected);
+  document.title=locale==='pt-BR'?'Seu pedido — PremiumHairstyles AI':'Your Order — PremiumHairstyles AI';
+}
 
 async function init(){
-  const [configRes,meRes]=await Promise.all([
-    fetch('/api/config',{cache:'no-store'}),
-    fetch('/api/me',{cache:'no-store'})
-  ]);
+  applyCopy();
+  const [configRes,meRes]=await Promise.all([fetch('/api/config',{cache:'no-store'}),fetch('/api/me',{cache:'no-store'})]);
   if(configRes.ok)cfg={...cfg,...await configRes.json()};
   const me=await meRes.json().catch(()=>({authenticated:false}));
-  if(!meRes.ok || !me.authenticated){location.href='/signin?next=personal-plan';return;}
+  if(!meRes.ok||!me.authenticated){location.href='/signin?next=personal-plan';return;}
   if(me.lead.paymentStatus==='paid'){location.href='/dashboard';return;}
-  const priceEl=$('[data-price]');
-  if(priceEl){
-    const amount=Number(cfg.priceDisplayUsd||36.49);
-    priceEl.textContent=(cfg.siteLocale||'pt-BR').toLowerCase()==='pt-br'?amount.toFixed(2).replace('.',','):amount.toFixed(2).replace(/\.00$/,'');
-  }
-  const countEl=$('[data-result-count]');
-  if(countEl)countEl.textContent=cfg.generationTargetCount;
+  const amount=Number(cfg.priceDisplayUsd||6.99),priceEl=$('[data-price]'),prefix=$('.price-prefix'),currency=$('.price-currency');
+  if(priceEl)priceEl.textContent=locale==='pt-BR'?amount.toFixed(2).replace('.',','):amount.toFixed(2);
+  if(prefix)prefix.textContent=locale==='pt-BR'?'R$ ':'$';
+  if(currency)currency.textContent=cfg.siteCurrency||(locale==='pt-BR'?'BRL':'USD');
   animatePlan();
 }
 
 async function animatePlan(){
-  const stage=$('#analysisStage');
-  const paywall=$('#paywall');
-  const items=[...document.querySelectorAll('.analysis-item')];
-  for(const item of items){
-    item.classList.add('is-active');
-    await wait(320);
-    item.classList.remove('is-active');
-    item.classList.add('is-done');
-    const badge=item.querySelector('b');
-    if(badge)badge.textContent='✓';
-  }
-  await wait(180);
-  if(stage)stage.style.display='none';
-  paywall?.classList.add('is-visible');
-  fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,eventName:'paywall_view',metadata:{price:cfg.priceDisplayUsd,currency:cfg.siteCurrency||'BRL',locale:cfg.siteLocale||'pt-BR',provider:'hotmart'}})}).catch(()=>{});
+  const stage=$('#analysisStage'),paywall=$('#paywall'),items=[...document.querySelectorAll('.analysis-item')];
+  for(const item of items){item.classList.add('is-active');await wait(320);item.classList.remove('is-active');item.classList.add('is-done');const badge=item.querySelector('b');if(badge)badge.textContent='✓';}
+  await wait(180);if(stage)stage.style.display='none';paywall?.classList.add('is-visible');
+  fetch('/api/analytics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,eventName:'paywall_view',metadata:{price:cfg.priceDisplayUsd,currency:cfg.siteCurrency,locale,provider:'crypto'}})}).catch(()=>{});
 }
 
-$('#checkoutButton')?.addEventListener('click',async()=>{
-  const btn=$('#checkoutButton');
-  const note=$('#checkoutNote');
-  const agreement=$('#purchaseAgreement');
-  if(!agreement?.checked){
-    if(note)note.textContent='Confirme os Termos e a Política de Reembolso antes de continuar para o pagamento.';
-    agreement?.focus();
-    return;
-  }
-  btn.disabled=true;
-  btn.textContent='Abrindo pagamento seguro…';
-  if(note)note.textContent='Abrindo checkout seguro da Hotmart…';
-  try{
-    const res=await fetch('/api/hotmart/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,acceptedPurchaseTerms:true})});
-    const data=await res.json().catch(()=>({}));
-    if(!res.ok)throw new Error(data.error||'checkout_failed');
-    if(data.alreadyPaid){location.href='/dashboard';return;}
-    if(!data.checkoutUrl)throw new Error('checkout_not_configured');
-    location.href=data.checkoutUrl;
-  }catch(e){
-    console.error('checkout_open_failed',e);
-    btn.disabled=false;
-    btn.textContent='Comprar por R$ 36,49 →';
-    const messages={
-      email_verification_required:'Verifique seu e-mail antes de continuar para o pagamento.',
-      upload_not_ready:'Sua foto ainda está sendo preparada. Tente novamente em alguns instantes.',
-      checkout_disabled:'O checkout está temporariamente indisponível.',
-      checkout_not_configured:'O checkout da Hotmart ainda não foi configurado. Entre em contato com o suporte.',
-      purchase_terms_required:'Confirme os Termos e a Política de Reembolso antes de continuar.',
-      sign_in_required:'Sua sessão segura expirou. Reinicie a consultoria.'
-    };
-    if(note)note.textContent=messages[e.message]||'Não foi possível abrir o checkout. Tente novamente ou entre em contato com o suporte.';
-  }
+$('#checkoutButton')?.addEventListener('click',()=>{
+  const agreement=$('#purchaseAgreement'),note=$('#checkoutNote');
+  if(!agreement?.checked){if(note)note.textContent=C.accept;agreement?.focus();return;}
+  setText('#checkoutButton',C.opening);
 });
 
 init().catch(error=>{
   console.error('personal_plan_init_failed',error);
-  const stage=$('#analysisStage');
-  if(stage)stage.innerHTML='<div class="eyebrow" style="justify-content:center">Algo deu errado</div><h1>Atualize esta página.</h1><p>Seu e-mail verificado e sua foto enviada estão seguros. Se o problema continuar, entre em contato com o suporte.</p>';
+  const stage=$('#analysisStage');if(stage)stage.innerHTML=`<div class="eyebrow" style="justify-content:center">${C.errorTitle}</div><h1>${C.refresh}</h1><p>${C.safe}</p>`;
 });

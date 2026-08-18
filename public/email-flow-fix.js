@@ -6,26 +6,26 @@ proceedFromEmail = async function proceedFromEmailSingleStep(){
   const error=document.querySelector('#emailError');
   const email=input?.value.trim().toLowerCase();
   if(!/^\S+@\S+\.\S+$/.test(email||'')){
-    if(error)error.textContent='Please enter a valid email address.';
+    if(error)error.textContent=t('invalidEmail');
     return;
   }
   if(!consent?.checked){
-    if(error)error.textContent='Please review and accept the Terms and Privacy Policy to continue.';
+    if(error)error.textContent=t('acceptTerms');
     return;
   }
   leadEmail=email;
   if(error)error.textContent='';
   const next=document.querySelector('#flowContinue');
-  if(next){next.disabled=true;next.textContent='Sending verification code…';}
+  if(next){next.disabled=true;next.textContent=t('sending');}
   await submitLead();
-  if(next && phase==='email'){next.disabled=false;next.textContent='Send verification code →';}
+  if(next && phase==='email'){next.disabled=false;next.textContent=t('sendCode');}
 };
 
 const emailStepObserver=new MutationObserver(()=>{
   const input=document.querySelector('#leadEmail');
   const next=document.querySelector('#flowContinue');
   if(input && next && typeof phase!=='undefined' && phase==='email' && !leadCreated){
-    next.textContent='Send verification code →';
+    next.textContent=t('sendCode');
   }
 });
 const flowRoot=document.querySelector('#flowContent');
@@ -143,6 +143,7 @@ if(flowRoot)emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
 // We keep only the answers that materially help choose useful hairstyle directions.
 // -----------------------------------------------------------------------------
 (function configureLeanQuizAndRecommendations(){
+  if(!QUIZ_ENABLED)return;
   const keepKeys=['gender','ageRange','currentLength','desiredLength','texture','styleGoals','maintenanceLevel'];
   const leanQuestions=questions.filter(q=>keepKeys.includes(q.key));
   questions.splice(0,questions.length,...leanQuestions);
@@ -221,7 +222,7 @@ if(flowRoot)emailStepObserver.observe(flowRoot,{childList:true,subtree:true});
     originalShowEmail();
     const consent=document.querySelector('#flowContent .consent span');
     if(consent){
-      consent.innerHTML='Concordo com os <a href="/terms" target="_blank">Termos</a> e a <a href="/privacy" target="_blank">Política de Privacidade</a>. Entendo que minha foto será processada de forma privada e armazenada temporariamente para criar os resultados dos penteados.';
+      consent.innerHTML=t('consent');
     }
   };
 })();

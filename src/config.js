@@ -4,7 +4,7 @@ const bool = (value, fallback = false) => value == null ? fallback : ['1','true'
 const integer = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const number = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const list = (value) => String(value || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
-const activeLocale = process.env.SITE_LOCALE || 'pt-BR';
+const activeLocale = process.env.SITE_LOCALE || 'auto';
 const isBrazilStorefront = activeLocale.toLowerCase() === 'pt-br';
 const usdPrice = process.env.PRICE_DISPLAY_USD || '6.99';
 const brlPrice = process.env.PRICE_DISPLAY_BRL || '36.49';

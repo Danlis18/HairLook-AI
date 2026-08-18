@@ -13,6 +13,7 @@ import cryptoRoutes from './routes/crypto.js';
 import metaRoutes from './routes/meta.js';
 import adminRoutes from './routes/admin.js';
 import { log } from './lib/log.js';
+import { GEO_LOCALE_COOKIE, LOCALE_COOKIE, resolveRequestLocale } from './lib/locale.js';
 import { startWorker } from './services/workerLoop.js';
 
 assertProductionConfig();
@@ -110,14 +111,46 @@ const normalizePublicBrand = (html) => String(html)
   .replace(/Premium Hairstyles AI/g, 'PremiumHairstyles AI')
   .replace(/<title>[\s\S]*?<\/title>/i, '<title>PremiumHairstyles AI</title>');
 
-const page = (name, { localize=true } = {}) => (req, res, next) => {
+const localeCookieOptions = (maxAge) => ({
+  httpOnly:false,
+  secure:config.isProduction,
+  sameSite:'lax',
+  maxAge,
+  path:'/'
+});
+
+function cleanLocaleQuery(req) {
+  const url = new URL(req.originalUrl, config.appUrl);
+  url.searchParams.delete('lang');
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+const page = (name, { localize=true } = {}) => async (req, res, next) => {
   const filePath = path.join(root, 'public', name);
-  if (!localize || config.siteLocale.toLowerCase() !== 'pt-br') return res.sendFile(filePath);
+  if (!localize) return res.sendFile(filePath);
+  let localeContext;
+  try {
+    localeContext = await resolveRequestLocale(req);
+  } catch (error) {
+    return next(error);
+  }
+  if (req.query?.lang) {
+    res.cookie(LOCALE_COOKIE, localeContext.locale, localeCookieOptions(365 * 86400_000));
+    res.clearCookie(GEO_LOCALE_COOKIE, { path:'/' });
+    return res.redirect(302, cleanLocaleQuery(req));
+  }
+  if (localeContext.source !== 'preference') {
+    res.cookie(GEO_LOCALE_COOKIE, localeContext.locale, localeCookieOptions(6 * 60 * 60_000));
+  }
   fs.readFile(filePath, 'utf8', (error, html) => {
     if (error) return next(error);
-    let localized = normalizePublicBrand(html.replace(/<html\s+lang="en"/i, '<html lang="pt-BR"'));
-    const tags = '<script src="/meta-pixel.js" defer></script><script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
-    if (!localized.includes('/pt-br-runtime.js')) localized = localized.replace('</head>', `${tags}</head>`);
+    const lang = localeContext.locale === 'pt-BR' ? 'pt-BR' : 'en';
+    const country = String(localeContext.country || '').replace(/[^A-Z]/g, '').slice(0, 2);
+    let localized = normalizePublicBrand(html)
+      .replace(/<html\s+lang="[^"]*"/i, `<html lang="${lang}" data-locale="${lang}" data-country="${country}"`);
+    const sharedTags = '<link rel="stylesheet" href="/locale-switcher.css"><script src="/meta-pixel.js" defer></script><script src="/locale-switcher.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
+    const portugueseTags = lang === 'pt-BR' ? '<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script>' : '';
+    if (!localized.includes('/locale-switcher.js')) localized = localized.replace('</head>', `${sharedTags}${portugueseTags}</head>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     res.send(localized);
@@ -140,13 +173,17 @@ app.get('/cookies', page('cookies.html'));
 app.get('/contact', page('contact.html'));
 app.get('/about', page('about.html'));
 
-app.use((req, res, next) => {
-  if (config.siteLocale.toLowerCase() !== 'pt-br') return res.status(404).sendFile(path.join(root, 'public', '404.html'));
+app.use(async (req, res, next) => {
   const filePath=path.join(root,'public','404.html');
+  let localeContext;
+  try { localeContext=await resolveRequestLocale(req); } catch (error) { return next(error); }
   fs.readFile(filePath,'utf8',(error,html)=>{
     if(error)return next(error);
-    const tags='<script src="/meta-pixel.js" defer></script><script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
-    const localized=normalizePublicBrand(html.replace(/<html\s+lang="en"/i,'<html lang="pt-BR"')).replace('</head>',`${tags}</head>`);
+    const lang=localeContext.locale==='pt-BR'?'pt-BR':'en';
+    const country=String(localeContext.country||'').replace(/[^A-Z]/g,'').slice(0,2);
+    const sharedTags='<link rel="stylesheet" href="/locale-switcher.css"><script src="/meta-pixel.js" defer></script><script src="/locale-switcher.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
+    const portugueseTags=lang==='pt-BR'?'<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script>':'';
+    const localized=normalizePublicBrand(html).replace(/<html\s+lang="[^"]*"/i,`<html lang="${lang}" data-locale="${lang}" data-country="${country}"`).replace('</head>',`${sharedTags}${portugueseTags}</head>`);
     res.status(404).type('html').send(localized);
   });
 });
@@ -155,7 +192,7 @@ app.use((error, req, res, next) => {
   const publicMessage = status < 500 ? (error.code === 'LIMIT_FILE_SIZE' ? 'file_too_large' : 'invalid_request') : 'server_error';
   log.error('request_error', { method: req.method, path: req.originalUrl, status, error: error.stack || error.message });
   if (req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/admin/magic')) return res.status(status).json({ error: publicMessage, details: config.isProduction ? undefined : error.message });
-  res.status(status).send(config.siteLocale.toLowerCase()==='pt-br'?'Algo deu errado. Tente novamente.':'Something went wrong. Please try again.');
+  res.status(status).send('Something went wrong. Please try again.');
 });
 
 const server = app.listen(config.port, () => log.info('server_started', { port: config.port, appUrl: config.appUrl, demoMode: config.demoMode, locale:config.siteLocale, currency:config.siteCurrency, paymentProvider:config.paymentProvider }));
