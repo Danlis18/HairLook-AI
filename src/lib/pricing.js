@@ -48,6 +48,7 @@ export function applyPricingToHtml(html, pricing) {
   return String(html)
     .replaceAll('$24.99', `$${pricing.compareAt}`)
     .replaceAll('$6.99', `$${pricing.current}`)
+    .replaceAll('>6.99<', `>${pricing.current}<`)
     .replaceAll('$18.00', `$${pricing.savings}`)
     .replace(/\$18\b/g, `$${pricing.savings}`);
 }

@@ -27,9 +27,9 @@ test('Brazil, Portugal and the rest of the world keep their existing offers',()=
 });
 
 test('server-rendered US pages replace only the US storefront price strings',()=>{
-  const html='<b>$24.99</b><strong>$6.99</strong><span>Save $18 · 72% off</span>';
+  const html='<b>$24.99</b><strong>$6.99</strong><span>$<i>6.99</i></span><span>Save $18 · 72% off</span>';
   const us=storefrontPricing({country:'US',locale:'en'});
-  assert.equal(applyPricingToHtml(html,us),'<b>$53.54</b><strong>$14.99</strong><span>Save $38.55 · 72% off</span>');
+  assert.equal(applyPricingToHtml(html,us),'<b>$53.54</b><strong>$14.99</strong><span>$<i>14.99</i></span><span>Save $38.55 · 72% off</span>');
   assert.equal(applyPricingToHtml(html,storefrontPricing({country:'JP',locale:'en'})),html);
 });
 
