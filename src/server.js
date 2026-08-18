@@ -148,7 +148,7 @@ const page = (name, { localize=true } = {}) => async (req, res, next) => {
     const country = String(localeContext.country || '').replace(/[^A-Z]/g, '').slice(0, 2);
     let localized = normalizePublicBrand(html)
       .replace(/<html\s+lang="[^"]*"/i, `<html lang="${lang}" data-locale="${lang}" data-country="${country}"`);
-    const sharedTags = '<link rel="stylesheet" href="/locale-switcher.css"><script src="/meta-pixel.js" defer></script><script src="/locale-switcher.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
+    const sharedTags = '<link rel="stylesheet" href="/locale-switcher.css"><link rel="stylesheet" href="/ui-polish.css"><link rel="stylesheet" href="/mobile-modal-fix.css"><script src="/meta-pixel.js" defer></script><script src="/locale-switcher.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script><script src="/mobile-camera-upload.js" defer></script>';
     const portugueseTags = lang === 'pt-BR' ? '<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-pages.js" defer></script><script src="/pt-br-final.js" defer></script>' : '';
     if (!localized.includes('/locale-switcher.js')) localized = localized.replace('</head>', `${sharedTags}${portugueseTags}</head>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -181,7 +181,7 @@ app.use(async (req, res, next) => {
     if(error)return next(error);
     const lang=localeContext.locale==='pt-BR'?'pt-BR':'en';
     const country=String(localeContext.country||'').replace(/[^A-Z]/g,'').slice(0,2);
-    const sharedTags='<link rel="stylesheet" href="/locale-switcher.css"><script src="/meta-pixel.js" defer></script><script src="/locale-switcher.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script>';
+    const sharedTags='<link rel="stylesheet" href="/locale-switcher.css"><link rel="stylesheet" href="/ui-polish.css"><link rel="stylesheet" href="/mobile-modal-fix.css"><script src="/meta-pixel.js" defer></script><script src="/locale-switcher.js" defer></script><script src="/brand-normalize.js" defer></script><script src="/delivery-time-15min.js" defer></script><script src="/mobile-camera-upload.js" defer></script>';
     const portugueseTags=lang==='pt-BR'?'<script src="/pt-br-runtime.js" defer></script><script src="/pt-br-final.js" defer></script>':'';
     const localized=normalizePublicBrand(html).replace(/<html\s+lang="[^"]*"/i,`<html lang="${lang}" data-locale="${lang}" data-country="${country}"`).replace('</head>',`${sharedTags}${portugueseTags}</head>`);
     res.status(404).type('html').send(localized);

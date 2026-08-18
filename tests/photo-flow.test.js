@@ -34,3 +34,19 @@ test('public pages include geo-aware locale switching and bilingual funnel copy'
   assert.match(checkout,/Choose how you want to pay/);
   assert.match(checkout,/Escolha como deseja pagar/);
 });
+
+test('English and Portuguese share the same visual polish and mobile upload behavior',()=>{
+  const server=read('src/server.js');
+  const hero=read('public/hero-media-fix.js');
+  const camera=read('public/mobile-camera-upload.js');
+  const ptFinal=read('public/pt-br-final.js');
+  assert.match(server,/sharedTags[^\n]+ui-polish\.css/);
+  assert.match(server,/sharedTags[^\n]+mobile-modal-fix\.css/);
+  assert.match(server,/sharedTags[^\n]+mobile-camera-upload\.js/);
+  assert.match(hero,/documentElement\.dataset\.locale === 'pt-BR'/);
+  assert.match(hero,/Soft Layers/);
+  assert.match(hero,/Camadas suaves/);
+  assert.match(camera,/Take photo now/);
+  assert.match(camera,/Tirar foto agora/);
+  assert.doesNotMatch(ptFinal,/data-ui-polish|data-mobile-modal-fix|data-mobile-camera-upload|removeHeroTrustExtras/);
+});

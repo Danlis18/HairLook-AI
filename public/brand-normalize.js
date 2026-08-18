@@ -4,12 +4,6 @@
   const oldPatterns=[/HairLook AI/g,/Premium-Hairstyles/g,/Premium Hairstyles AI/g];
   const normalizeText=value=>{
     let v=oldPatterns.reduce((out,re)=>out.replace(re,BRAND),String(value||''));
-    v=v.replace(/Paddle/g,'Hotmart');
-    v=v.replace(/Hotmart como Merchant of Record/g,'Hotmart como plataforma de pagamento');
-    v=v.replace(/A Hotmart é o Merchant of Record/g,'A Hotmart processa o pagamento');
-    v=v.replace(/A Hotmart atua como Merchant of Record/g,'A Hotmart atua como plataforma de pagamento');
-    v=v.replace(/que atua como Merchant of Record/g,'que processa o pagamento');
-    v=v.replace(/Merchant of Record/g,'processamento de pagamento');
     v=v.replace(/support@mail\.premium-hairstyles\.com/g,SUPPORT);
     v=v.replace(/support@premium-hairstyle\.com/g,SUPPORT);
     v=v.replace(/premium\.hairstyle\.official@gmail\.com/g,SUPPORT);

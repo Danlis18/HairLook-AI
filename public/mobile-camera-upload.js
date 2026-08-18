@@ -1,4 +1,19 @@
 (() => {
+  const locale = document.documentElement.dataset.locale === 'pt-BR' ? 'pt-BR' : 'en';
+  const copy = {
+    en: {
+      cameraAria: 'Take a photo now',
+      camera: 'Take photo now',
+      or: 'or',
+      gallery: 'Choose from gallery'
+    },
+    'pt-BR': {
+      cameraAria: 'Tirar uma foto agora',
+      camera: 'Tirar foto agora',
+      or: 'ou',
+      gallery: 'Escolher da galeria'
+    }
+  }[locale];
   const isMobileLike = () => window.matchMedia('(max-width: 820px), (pointer: coarse)').matches;
 
   const cameraIcon = `
@@ -18,10 +33,10 @@
     const actions = document.createElement('div');
     actions.className = 'mobile-photo-actions';
     actions.innerHTML = `
-      <input id="cameraInput" class="mobile-camera-input" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" capture="user" aria-label="Tirar uma foto agora">
-      <label class="mobile-camera-button" for="cameraInput">${cameraIcon}<span>Tirar foto agora</span></label>
-      <span class="mobile-photo-or">ou</span>
-      <button type="button" class="mobile-gallery-button">Escolher da galeria</button>`;
+      <input id="cameraInput" class="mobile-camera-input" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" capture="user" aria-label="${copy.cameraAria}">
+      <label class="mobile-camera-button" for="cameraInput">${cameraIcon}<span>${copy.camera}</span></label>
+      <span class="mobile-photo-or">${copy.or}</span>
+      <button type="button" class="mobile-gallery-button">${copy.gallery}</button>`;
 
     host.insertBefore(actions, zone);
 

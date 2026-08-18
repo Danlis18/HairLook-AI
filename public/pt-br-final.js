@@ -1,21 +1,6 @@
 (() => {
   document.documentElement.lang='pt-BR';
 
-  if(!document.querySelector('link[data-ui-polish]')){
-    const link=document.createElement('link');
-    link.rel='stylesheet';
-    link.href='/ui-polish.css';
-    link.dataset.uiPolish='true';
-    document.head.appendChild(link);
-  }
-  if(!document.querySelector('link[data-mobile-modal-fix]')){
-    const link=document.createElement('link');
-    link.rel='stylesheet';
-    link.href='/mobile-modal-fix.css';
-    link.dataset.mobileModalFix='true';
-    document.head.appendChild(link);
-  }
-
   const SUPPORT_EMAIL='support@mail.premium-hairstyle.com';
   const current=36.49, compare=129.90, saving=compare-current;
   const brl=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value));
@@ -107,31 +92,12 @@
     document.querySelectorAll('.sale-current-line .price').forEach(el=>el.innerHTML='R$ <span data-price>36,49</span>');
   };
 
-  const applyPhotoExamples=()=>{
-    document.querySelectorAll('img[src$="/upload-good-1.png"],img[src$="upload-good-1.png"]').forEach(img=>{
-      img.src='/media/1.png';
-      img.alt='Exemplo de foto nítida para penteados';
-    });
-    document.querySelectorAll('img[src$="/upload-good-2.png"],img[src$="upload-good-2.png"]').forEach(img=>{
-      img.src='/media/2%20(2).png';
-      img.alt='Segundo exemplo de foto nítida para penteados';
-    });
-  };
+  translateOnce();applyPrice();
+  setTimeout(translateOnce,250);setTimeout(translateOnce,900);
 
-  const removeHeroTrustExtras=()=>{const items=document.querySelectorAll('.hero-trust .trust-item');[items[1],items[2]].forEach(el=>el?.remove());};
-  const applySupportEmail=()=>{
-    const supportCol=[...document.querySelectorAll('.footer-col')].find(col=>{const title=col.querySelector('strong')?.textContent.trim().toLowerCase();return title==='support'||title==='suporte';});
-    if(supportCol&&!supportCol.querySelector('[data-brand-support-email]')){const link=document.createElement('a');link.href=`mailto:${SUPPORT_EMAIL}`;link.textContent=SUPPORT_EMAIL;link.dataset.brandSupportEmail='true';supportCol.appendChild(link);}
-    document.querySelectorAll('a[href^="mailto:"]').forEach(link=>{if(/support@example\.com|results@example\.com|support@mail\.premium-hairstyles\.com/i.test(link.getAttribute('href')||'')){link.href=`mailto:${SUPPORT_EMAIL}`;link.textContent=SUPPORT_EMAIL;}});
-  };
-
-  translateOnce();applyPrice();applyPhotoExamples();removeHeroTrustExtras();applySupportEmail();
-  setTimeout(()=>{translateOnce();applyPhotoExamples();},250);setTimeout(()=>{translateOnce();applyPhotoExamples();},900);
-
-  const observer=new MutationObserver(()=>requestAnimationFrame(()=>{applyPrice();applyPhotoExamples();removeHeroTrustExtras();applySupportEmail();}));
+  const observer=new MutationObserver(()=>requestAnimationFrame(applyPrice));
   observer.observe(document.body,{childList:true,subtree:true});
 
   if(location.pathname==='/'&&typeof QUIZ_ENABLED!=='undefined'&&QUIZ_ENABLED&&!document.querySelector('script[data-quiz-ui-fix]')){const script=document.createElement('script');script.src='/quiz-ui-fix.js';script.dataset.quizUiFix='true';document.head.appendChild(script);}
   if(location.pathname==='/'&&typeof QUIZ_ENABLED!=='undefined'&&QUIZ_ENABLED&&!document.querySelector('script[data-multi-select-polish]')){const script=document.createElement('script');script.src='/multi-select-polish.js';script.dataset.multiSelectPolish='true';document.head.appendChild(script);}
-  if(location.pathname==='/'&&!document.querySelector('script[data-mobile-camera-upload]')){const script=document.createElement('script');script.src='/mobile-camera-upload.js';script.dataset.mobileCameraUpload='true';document.head.appendChild(script);}
 })();

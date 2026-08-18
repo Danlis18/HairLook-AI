@@ -3,6 +3,72 @@
   const main = document.querySelector('.hero-gallery-main');
   if (!gallery || !main) return;
 
+  const locale = document.documentElement.dataset.locale === 'pt-BR' ? 'pt-BR' : 'en';
+  const copy = {
+    en: {
+      heroVideo: 'PremiumHairstyles AI hairstyle preview video',
+      inspirationPrefix: 'Hairstyle inspiration',
+      labels: [
+        ['Soft Layers', 'Natural · elegant'],
+        ['Modern Texture', 'Light · dimensional'],
+        ['Elegant Shape', 'Refined · versatile'],
+        ['Soft Movement', 'Light · natural'],
+        ['Statement Style', 'Bold · premium'],
+        ['Color & Finish', 'Shine · dimension']
+      ],
+      disclosure: 'Style inspiration is illustrative. Your paid hairstyle previews are prepared from your uploaded photo and selected preferences.',
+      consultationAlt: 'Portrait inspiration for a hairstyle consultation',
+      faceAlt: 'Portrait example for hairstyle inspiration',
+      goodAlt: ['Example of a clear front-facing portrait', 'Second example of a clear front-facing portrait'],
+      goodTitle: 'For the best result',
+      goodLines: ['✓ Face clearly visible', '✓ Good natural lighting', '✓ Looking toward the camera'],
+      badTitle: 'Try to avoid',
+      badLines: ['× Sunglasses or face covered', '× Strong shadows', '× Very blurry or tiny image'],
+      faqEyebrow: 'Frequently asked',
+      faqTitle: 'Questions before you upload.',
+      faq: [
+        ['What exactly am I buying?', 'A personalized digital hairstyle visualization service offered as a one-time purchase. There is no subscription or automatic renewal. See Product Details for the complete description.'],
+        ['Will the previews still look like me?', 'Your hairstyle previews are prepared from your own photo and style preferences. They show possible hairstyle directions and do not guarantee an identical salon result.'],
+        ['What happens to my photo?', 'Your photo is stored privately for the time needed to prepare your order. Access is server-controlled, and authorized operators can reach private originals only through temporary protected links.'],
+        ['Why do I need to verify my email?', 'Your results are delivered to the email connected to your order. You enter it once and immediately receive a 6-digit code to confirm it before payment.'],
+        ['How long will my results take?', 'After payment is confirmed, your personalized results are prepared and sent to your verified email within 15 minutes.'],
+        ['How is payment confirmed?', 'Available secure payment methods are shown before you pay. Your order is accepted only after server-side payment confirmation.'],
+        ['Can the collection include gray-friendly ideas?', 'Yes. Your collection can explore natural gray, softer blending, gray coverage or several color directions.']
+      ]
+    },
+    'pt-BR': {
+      heroVideo: 'Vídeo de prévia de penteados da PremiumHairstyles AI',
+      inspirationPrefix: 'Inspiração de penteado',
+      labels: [
+        ['Camadas suaves', 'Natural · elegante'],
+        ['Textura moderna', 'Leve · dimensional'],
+        ['Formato elegante', 'Refinado · versátil'],
+        ['Movimento suave', 'Leve · natural'],
+        ['Estilo marcante', 'Ousado · premium'],
+        ['Cor e acabamento', 'Brilho · dimensão']
+      ],
+      disclosure: 'As inspirações de estilo são ilustrativas. Suas prévias pagas de penteados são preparadas a partir da foto enviada e das preferências selecionadas.',
+      consultationAlt: 'Retrato de inspiração para consultoria de penteados',
+      faceAlt: 'Exemplo de retrato para inspiração de penteado',
+      goodAlt: ['Exemplo de retrato frontal nítido', 'Segundo exemplo de retrato frontal nítido'],
+      goodTitle: 'Para o melhor resultado',
+      goodLines: ['✓ Rosto claramente visível', '✓ Boa iluminação natural', '✓ Olhando para a câmera'],
+      badTitle: 'Evite',
+      badLines: ['× Óculos escuros ou rosto coberto', '× Sombras fortes', '× Imagem muito desfocada ou pequena'],
+      faqEyebrow: 'Dúvidas frequentes',
+      faqTitle: 'Dúvidas antes de enviar sua foto.',
+      faq: [
+        ['O que exatamente estou comprando?', 'Um serviço digital personalizado de visualização de penteados, oferecido como compra única. Não há assinatura nem renovação automática. Consulte a página de Detalhes do Produto para ver a descrição completa.'],
+        ['As prévias ainda vão parecer comigo?', 'As prévias de penteados são preparadas a partir da sua própria foto e das suas preferências de estilo. Elas mostram possíveis direções de penteado e não garantem um resultado idêntico ao de um salão.'],
+        ['O que acontece com a minha foto?', 'Sua foto é armazenada de forma privada pelo tempo necessário para preparar o seu pedido. O acesso é controlado pelo servidor e operadores autorizados acessam os originais privados apenas por links temporários e protegidos.'],
+        ['Por que preciso verificar meu e-mail?', 'Seus resultados são enviados ao e-mail vinculado ao pedido. Você informa o endereço uma única vez e recebe imediatamente um código de 6 dígitos para confirmá-lo antes do pagamento.'],
+        ['Quanto tempo meus resultados levam para ficar prontos?', 'Após a confirmação do pagamento, seus resultados personalizados são preparados e enviados ao seu e-mail verificado em até 15 minutos.'],
+        ['Como o pagamento é confirmado?', 'As formas de pagamento seguras disponíveis são exibidas antes do pagamento. O pedido só é aceito após a confirmação do pagamento pelo servidor.'],
+        ['A coleção pode incluir ideias para cabelos grisalhos?', 'Sim. Sua coleção pode explorar grisalhos naturais, transição suave, cobertura dos fios grisalhos ou diferentes opções de cor.']
+      ]
+    }
+  }[locale];
+
   let video = main.querySelector('.hero-main-video');
   if (!video) {
     const legacyImage = main.querySelector('img');
@@ -15,7 +81,7 @@
     video.preload = 'auto';
     video.setAttribute('muted', '');
     video.setAttribute('playsinline', '');
-    video.setAttribute('aria-label', 'Vídeo de prévia de penteados da PremiumHairstyles AI');
+    video.setAttribute('aria-label', copy.heroVideo);
     const source = document.createElement('source');
     source.src = '/media/Main-Video.mp4';
     source.type = 'video/mp4';
@@ -29,6 +95,7 @@
   video.loop = true;
   video.playsInline = true;
   video.preload = 'auto';
+  video.setAttribute('aria-label', copy.heroVideo);
   gallery.querySelectorAll('.hero-gallery-small, .hero-note').forEach((el) => el.remove());
 
   const style = document.createElement('style');
@@ -96,21 +163,14 @@
     '/media/9fc417c1f9cd2ed0700b802bb61440fa.webp',
     '/media/12-42.webp'
   ];
-  const labels = [
-    ['Camadas suaves', 'Natural · elegante'],
-    ['Textura moderna', 'Leve · dimensional'],
-    ['Formato elegante', 'Refinado · versátil'],
-    ['Movimento suave', 'Leve · natural'],
-    ['Estilo marcante', 'Ousado · premium'],
-    ['Cor e acabamento', 'Brilho · dimensão']
-  ];
+  const labels = copy.labels;
 
   const cards = [...document.querySelectorAll('.gallery-scroller .style-card')];
   cards.slice(0, 4).forEach((card, i) => {
     const img = card.querySelector('img');
     if (img) {
       img.src = premiumImages[i];
-      img.alt = `Inspiração de penteado: ${labels[i][0]}`;
+      img.alt = `${copy.inspirationPrefix}: ${labels[i][0]}`;
       img.style.objectPosition = 'center';
     }
     const strong = card.querySelector('.style-meta strong');
@@ -122,72 +182,72 @@
   const colorCard = document.querySelector('.gallery-scroller .color-direction-card');
   if (colorCard) {
     colorCard.className = 'style-card';
-    colorCard.innerHTML = `<img src="${premiumImages[4]}" alt="Inspiração de penteado: ${labels[4][0]}" loading="lazy"><div class="style-meta"><strong>${labels[4][0]}</strong><span>${labels[4][1]}</span></div>`;
+    colorCard.innerHTML = `<img src="${premiumImages[4]}" alt="${copy.inspirationPrefix}: ${labels[4][0]}" loading="lazy"><div class="style-meta"><strong>${labels[4][0]}</strong><span>${labels[4][1]}</span></div>`;
   }
   const scroller = document.querySelector('.gallery-scroller');
   if (scroller && !scroller.querySelector('[data-premium-extra]')) {
     const extra = document.createElement('article');
     extra.className = 'style-card';
     extra.dataset.premiumExtra = 'true';
-    extra.innerHTML = `<img src="${premiumImages[5]}" alt="Inspiração de penteado: ${labels[5][0]}" loading="lazy"><div class="style-meta"><strong>${labels[5][0]}</strong><span>${labels[5][1]}</span></div>`;
+    extra.innerHTML = `<img src="${premiumImages[5]}" alt="${copy.inspirationPrefix}: ${labels[5][0]}" loading="lazy"><div class="style-meta"><strong>${labels[5][0]}</strong><span>${labels[5][1]}</span></div>`;
     scroller.appendChild(extra);
   }
 
   const disclosure = document.querySelector('.gallery-disclosure');
-  if (disclosure) disclosure.textContent = 'As inspirações de estilo são ilustrativas. Suas prévias pagas de penteados são preparadas a partir da sua própria foto enviada e das preferências selecionadas.';
+  if (disclosure) disclosure.textContent = copy.disclosure;
 
   const consultation = document.querySelector('.consultation-photo');
   if (consultation) {
     consultation.src = premiumImages[5];
-    consultation.alt = 'Retrato de inspiração para consultoria de penteados';
+    consultation.alt = copy.consultationAlt;
     consultation.style.objectPosition = 'center';
   }
 
   const faceVisual = document.querySelector('.face-shape-visual');
   if (faceVisual) {
     faceVisual.classList.add('face-photo-visual');
-    faceVisual.innerHTML = `<img class="face-profile-photo" src="${premiumImages[2]}" alt="Exemplo de retrato para inspiração de penteado" loading="lazy">`;
+    faceVisual.innerHTML = `<img class="face-profile-photo" src="${premiumImages[2]}" alt="${copy.faceAlt}" loading="lazy">`;
   }
 
   const goodTipImages = document.querySelectorAll('.tip-panel:not(.bad) .tip-img img');
   if (goodTipImages[0]) {
     goodTipImages[0].src = premiumImages[2];
-    goodTipImages[0].alt = 'Exemplo de retrato frontal nítido';
+    goodTipImages[0].alt = copy.goodAlt[0];
     goodTipImages[0].style.objectPosition = 'center 35%';
   }
   if (goodTipImages[1]) {
     goodTipImages[1].src = premiumImages[4];
-    goodTipImages[1].alt = 'Segundo exemplo de retrato frontal nítido';
+    goodTipImages[1].alt = copy.goodAlt[1];
     goodTipImages[1].style.objectPosition = 'center 28%';
   }
 
   const goodTipPanel = document.querySelector('.tip-panel:not(.bad)');
   if (goodTipPanel) {
     const title = goodTipPanel.querySelector('h3');
-    if (title) title.textContent = 'Para o melhor resultado';
+    if (title) title.textContent = copy.goodTitle;
     const lines = goodTipPanel.querySelectorAll('.tip-lines span');
-    const texts = ['✓ Rosto claramente visível', '✓ Boa iluminação natural', '✓ Olhando para a câmera'];
+    const texts = copy.goodLines;
     lines.forEach((el, i) => { if (texts[i]) el.textContent = texts[i]; });
   }
 
   const badTipPanel = document.querySelector('.tip-panel.bad');
   if (badTipPanel) {
     const title = badTipPanel.querySelector('h3');
-    if (title) title.textContent = 'Evite';
+    if (title) title.textContent = copy.badTitle;
     const lines = badTipPanel.querySelectorAll('.tip-lines span');
-    const texts = ['× Óculos escuros ou rosto coberto', '× Sombras fortes', '× Imagem muito desfocada ou pequena'];
+    const texts = copy.badLines;
     lines.forEach((el, i) => { if (texts[i]) el.textContent = texts[i]; });
   }
 
   const modalGoodImages = document.querySelectorAll('#photoTipsModal .tip-panel:not(.bad) .tip-img img');
   if (modalGoodImages[0]) {
     modalGoodImages[0].src = premiumImages[2];
-    modalGoodImages[0].alt = 'Exemplo de retrato frontal nítido';
+    modalGoodImages[0].alt = copy.goodAlt[0];
     modalGoodImages[0].style.objectPosition = 'center 35%';
   }
   if (modalGoodImages[1]) {
     modalGoodImages[1].src = premiumImages[4];
-    modalGoodImages[1].alt = 'Segundo exemplo de retrato frontal nítido';
+    modalGoodImages[1].alt = copy.goodAlt[1];
     modalGoodImages[1].style.objectPosition = 'center 28%';
   }
   const homepageBadImages = [...document.querySelectorAll('.photo-tips-grid .tip-panel.bad .tip-img img')];
@@ -204,18 +264,10 @@
   if (faq) {
     const eyebrow = faq.querySelector('.eyebrow');
     const title = faq.querySelector('.section-title');
-    if (eyebrow) eyebrow.textContent = 'Dúvidas frequentes';
-    if (title) title.textContent = 'Dúvidas antes de enviar sua foto.';
+    if (eyebrow) eyebrow.textContent = copy.faqEyebrow;
+    if (title) title.textContent = copy.faqTitle;
 
-    const faqCopy = [
-      ['O que exatamente estou comprando?', 'Um serviço digital personalizado de visualização de penteados, oferecido como compra única. Não há assinatura nem renovação automática. Consulte a página de Detalhes do Produto para ver a descrição completa.'],
-      ['As prévias ainda vão parecer comigo?', 'As prévias de penteados são preparadas a partir da sua própria foto e das suas preferências de estilo. Elas servem como visualizações de possíveis direções de penteado e não garantem um resultado idêntico ao de um salão.'],
-      ['O que acontece com a minha foto?', 'Sua foto é armazenada de forma privada pelo tempo necessário para preparar o seu pedido. O acesso é controlado pelo servidor e os arquivos originais privados ficam disponíveis somente para operadores autorizados por meio de links temporários e protegidos.'],
-      ['Por que preciso verificar meu e-mail?', 'Seus resultados são enviados ao e-mail vinculado ao pedido. Você informa o endereço uma única vez e recebe imediatamente um código de 6 dígitos para confirmá-lo antes do pagamento.'],
-      ['Quanto tempo leva para receber meus resultados?', 'Após a confirmação do pagamento, seus resultados personalizados são preparados e enviados ao seu e-mail verificado em até 72 horas.'],
-      ['Quem processa meu pagamento?', 'A Paddle é a Merchant of Record da transação. Ela fornece o checkout seguro e o suporte relacionado ao pagamento; a PremiumHairstyles AI prepara e entrega o serviço de visualização de penteados.'],
-      ['Posso explorar opções para cabelos grisalhos?', 'Sim. A consultoria pode incluir manter os fios grisalhos naturais, suavizar a transição, cobrir os grisalhos ou visualizar diferentes opções de cor.']
-    ];
+    const faqCopy = copy.faq;
 
     faq.querySelectorAll('details').forEach((details, i) => {
       const item = faqCopy[i];
