@@ -39,6 +39,7 @@ test('English and Portuguese share the same visual polish and mobile upload beha
   const server=read('src/server.js');
   const hero=read('public/hero-media-fix.js');
   const camera=read('public/mobile-camera-upload.js');
+  const ptRuntime=read('public/pt-br-runtime.js');
   const ptFinal=read('public/pt-br-final.js');
   assert.match(server,/sharedTags[^\n]+ui-polish\.css/);
   assert.match(server,/sharedTags[^\n]+mobile-modal-fix\.css/);
@@ -48,5 +49,7 @@ test('English and Portuguese share the same visual polish and mobile upload beha
   assert.match(hero,/Camadas suaves/);
   assert.match(camera,/Take photo now/);
   assert.match(camera,/Tirar foto agora/);
+  assert.match(ptRuntime,/Customer Support','Suporte ao cliente/);
+  assert.match(ptRuntime,/License & Acceptable Use','Licença e uso aceitável/);
   assert.doesNotMatch(ptFinal,/data-ui-polish|data-mobile-modal-fix|data-mobile-camera-upload|removeHeroTrustExtras/);
 });
