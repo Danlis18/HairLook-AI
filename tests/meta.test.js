@@ -48,6 +48,7 @@ test('Conversions API Purchase uses the same event id as the browser Pixel', asy
   process.env.META_PIXEL_ID = '123456789';
   process.env.META_LEAD_PIXEL_ID = '987654321';
   process.env.META_CONVERSIONS_API_TOKEN = 'test-token';
+  process.env.META_LEAD_CONVERSIONS_API_TOKEN = 'lead-test-token';
   process.env.APP_URL = 'https://example.com';
 
   const originalFetch = globalThis.fetch;
@@ -96,6 +97,7 @@ test('verified email sends a deduplicated Lead to the dedicated Meta dataset', a
 
     assert.equal(result.ok, true);
     assert.match(request.url,/\/987654321\/events/);
+    assert.match(request.url,/access_token=lead-test-token/);
     const payload = JSON.parse(request.options.body);
     assert.equal(payload.data[0].event_name, 'Lead');
     assert.equal(payload.data[0].event_id, 'lead:lead-1');

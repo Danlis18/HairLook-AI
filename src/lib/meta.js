@@ -28,14 +28,14 @@ function userDataFor(lead, request) {
   return userData;
 }
 
-async function sendMetaEvent({ pixelId, payload, eventId, logName, context = {} }) {
+async function sendMetaEvent({ pixelId, accessToken, payload, eventId, logName, context = {} }) {
   if (config.metaTestEventCode) payload.test_event_code = config.metaTestEventCode;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try {
     const url = new URL(graphUrl(pixelId));
-    url.searchParams.set('access_token', config.metaConversionsApiToken);
+    url.searchParams.set('access_token', accessToken);
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'content-type':'application/json', accept:'application/json' },
@@ -78,11 +78,11 @@ export async function sendMetaPurchase({ lead, txHash, request, value = config.c
       }
     }]
   };
-  return sendMetaEvent({ pixelId:config.metaPixelId, payload, eventId, logName:'meta_purchase', context:{ txHash } });
+  return sendMetaEvent({ pixelId:config.metaPixelId, accessToken:config.metaConversionsApiToken, payload, eventId, logName:'meta_purchase', context:{ txHash } });
 }
 
 export async function sendMetaLead({ lead, request, eventId = `lead:${lead?.id || ''}` }) {
-  if (!config.metaLeadPixelId || !config.metaConversionsApiToken || !lead?.email || !lead?.id) return { skipped:true, eventId };
+  if (!config.metaLeadPixelId || !config.metaLeadConversionsApiToken || !lead?.email || !lead?.id) return { skipped:true, eventId };
   const payload = {
     data: [{
       event_name: 'Lead',
@@ -98,5 +98,5 @@ export async function sendMetaLead({ lead, request, eventId = `lead:${lead?.id |
       }
     }]
   };
-  return sendMetaEvent({ pixelId:config.metaLeadPixelId, payload, eventId, logName:'meta_lead', context:{ leadId:lead.id } });
+  return sendMetaEvent({ pixelId:config.metaLeadPixelId, accessToken:config.metaLeadConversionsApiToken, payload, eventId, logName:'meta_lead', context:{ leadId:lead.id } });
 }
