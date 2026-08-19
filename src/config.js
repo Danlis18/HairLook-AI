@@ -57,6 +57,7 @@ export const config = Object.freeze({
 
   // Meta advertising measurement. Pixel ID is public; the Conversions API token is server-only.
   metaPixelId: String(process.env.META_PIXEL_ID || '1507954930621735').trim(),
+  metaLeadPixelId: String(process.env.META_LEAD_PIXEL_ID || '1697246104908480').trim(),
   metaConversionsApiToken: process.env.META_CONVERSIONS_API_TOKEN || '',
   metaTestEventCode: process.env.META_TEST_EVENT_CODE || '',
   metaGraphApiVersion: process.env.META_GRAPH_API_VERSION || '',

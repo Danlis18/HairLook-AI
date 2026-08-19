@@ -352,6 +352,7 @@ async function verifyOtp(){
       return;
     }
     track('email_verified');
+    await window.metaTrackLead?.({ eventId:body.metaLeadEventId });
     location.href=pendingNext;
   }catch{
     error.textContent=t('serverFailed');

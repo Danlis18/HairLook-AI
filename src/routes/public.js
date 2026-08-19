@@ -8,6 +8,7 @@ import { putOriginal, signedResultUrl, deleteOriginal, deleteResult } from '../l
 import { randomToken, tokenHash, hashIp, randomOtpCode, sha256, safeEqual } from '../lib/crypto.js';
 import { signLeadForCheckout } from '../lib/paddle.js';
 import { sendMagicLink, sendVerificationCode } from '../lib/mailer.js';
+import { sendMetaLead } from '../lib/meta.js';
 import { localeFromBody, localeFromLead, normalizeCountry, resolveRequestLocale } from '../lib/locale.js';
 import { cryptoPriceForLead, storefrontPricing } from '../lib/pricing.js';
 import { leadSession, optionalLeadSession, sameOrigin, noStore } from '../middleware.js';
@@ -129,9 +130,11 @@ router.post('/verify-email', sameOrigin, leadSession, async (req,res,next) => { 
   }
   const verifiedAt = new Date().toISOString();
   await repo.touchEmailChallenge(challenge.id, { used_at:verifiedAt });
-  await repo.updateLead(req.lead.id, { email_verified_at:verifiedAt });
+  const verifiedLead = await repo.updateLead(req.lead.id, { email_verified_at:verifiedAt });
   await repo.insertAnalytics({ session_id:'server', lead_id:req.lead.id, event_name:'email_verified', metadata:{} }).catch(() => {});
-  res.json({ ok:true });
+  const metaLeadEventId = `lead:${req.lead.id}`;
+  await sendMetaLead({ lead:verifiedLead, request:req, eventId:metaLeadEventId });
+  res.json({ ok:true, metaLeadEventId });
 } catch (e) { next(e); } });
 
 router.post('/verify-email/resend', sameOrigin, leadSession, async (req,res,next) => { try {

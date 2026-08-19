@@ -5,7 +5,7 @@ const router = Router();
 
 router.get('/config', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ pixelId: config.metaPixelId || '' });
+  res.json({ pixelId: config.metaPixelId || '', leadPixelId: config.metaLeadPixelId || '' });
 });
 
 export default router;
