@@ -37,8 +37,10 @@ function preferredColors(lead){
   return 'natural, believable salon color';
 }
 
-export function buildGenerationJobs(lead, targetCount=30, model='') {
-  return templates.slice(0,targetCount).map(([category,styleName,direction], index) => {
+export function buildGenerationJobs(lead, targetCount=10, model='') {
+  const tenStyleMix=[0,2,4,7,8,10,14,19,24,28].map(index=>templates[index]);
+  const selected=targetCount===10?tenStyleMix:templates.slice(0,targetCount);
+  return selected.map(([category,styleName,direction], index) => {
     const prompt = [
       'Edit only the hairstyle and hair color of the person in the input portrait.',
       `Create: ${direction}.`,

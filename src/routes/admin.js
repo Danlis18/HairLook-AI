@@ -33,6 +33,13 @@ async function startAdminSession(res, email) {
   res.cookie('hair_admin_session', sessionRaw, adminCookieOptions());
 }
 
+async function resultsAccessUrl(lead) {
+  const raw=randomToken();
+  const expiresAt=new Date(Date.now()+Math.max(config.magicLinkTtlMinutes,1440)*60_000).toISOString();
+  await repo.createMagicLink({email:lead.email,purpose:'user',leadId:lead.id,tokenHash:tokenHash(raw),expiresAt});
+  return `${config.appUrl}/auth/magic?token=${encodeURIComponent(raw)}`;
+}
+
 function csvCell(value) {
   if (value == null) return '';
   const raw = Array.isArray(value) ? value.join(' | ') : typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -42,7 +49,7 @@ function csvCell(value) {
 // Public: lets the /admin login page know which login methods are usable without
 // requiring an authenticated session or leaking any secret values.
 router.get('/login-methods', (req, res) => {
-  res.json({ passwordLogin: !!config.adminPassword, magicLink: config.demoMode || !!config.smtpHost });
+  res.json({ passwordLogin: !!config.adminPassword, magicLink: config.demoMode || !!config.resendApiKey });
 });
 
 router.post('/auth/login', sameOrigin, async (req, res, next) => {
@@ -163,7 +170,7 @@ router.post('/customers/:id/send-results', sameOrigin, adminSession, async (req,
     const id = uuidSchema.parse(req.params.id);
     const lead = await repo.getLead(id);
     if (!lead) return res.status(404).json({ error: 'not_found' });
-    await sendResultsReady({ to: lead.email, locale:localeFromLead(lead) });
+    await sendResultsReady({to:lead.email,locale:localeFromLead(lead),url:await resultsAccessUrl(lead),force:lead.access_mode==='reviewer_demo',demo:lead.access_mode==='reviewer_demo'});
     await repo.audit({ adminEmail: req.admin.email, action: 'results_email_send', targetType: 'customer', targetId: id });
     res.json({ ok: true });
   } catch (error) { next(error); }
@@ -214,7 +221,7 @@ router.post('/customers/:id/complete', sameOrigin, adminSession, async (req, res
     if (!count) return res.status(400).json({ error: 'no_results' });
     const updated = await repo.updateLead(id, { generation_status: 'completed' });
     if (!updated?.results_notified_at) {
-      await sendResultsReady({ to: lead.email, locale:localeFromLead(lead) }).catch(() => {});
+      await sendResultsReady({to:lead.email,locale:localeFromLead(lead),url:await resultsAccessUrl(lead),force:lead.access_mode==='reviewer_demo',demo:lead.access_mode==='reviewer_demo'}).catch(() => {});
       await repo.updateLead(id, { results_notified_at: new Date().toISOString() });
     }
     await repo.audit({ adminEmail: req.admin.email, action: 'fulfillment_complete', targetType: 'customer', targetId: id, metadata: { count } });
@@ -244,6 +251,28 @@ router.get('/generations', noStore, adminSession, async (req, res, next) => {
   try { res.json(await repo.listJobs({ limit: Math.min(Number(req.query.limit || 100), 200), offset: Math.max(Number(req.query.offset || 0), 0), status: String(req.query.status || '') })); }
   catch (error) { next(error); }
 });
+
+router.get('/reviewer-invites', noStore, adminSession, async (req,res,next) => { try {
+  res.json({rows:await repo.listReviewerInvites(Math.min(Number(req.query.limit||100),200))});
+} catch (error) { next(error); } });
+
+router.post('/reviewer-invites', sameOrigin, adminSession, async (req,res,next) => { try {
+  const input=z.object({reviewerEmail:z.union([emailSchema,z.literal('')]).optional(),locale:z.enum(['en','pt-BR']).default('en'),ttlHours:z.coerce.number().int().min(1).max(168).default(config.reviewerInviteTtlHours)}).parse(req.body||{});
+  const raw=randomToken();
+  const expiresAt=new Date(Date.now()+input.ttlHours*3600_000).toISOString();
+  const invite=await repo.createReviewerInvite({tokenHash:tokenHash(raw),reviewerEmail:input.reviewerEmail||null,locale:input.locale,createdBy:req.admin.email,expiresAt});
+  const url=`${config.appUrl}/api/reviewer/accept?token=${encodeURIComponent(raw)}`;
+  await repo.audit({adminEmail:req.admin.email,action:'reviewer_invite_create',targetType:'reviewer_invite',targetId:invite.id,metadata:{reviewerEmail:invite.reviewer_email||null,locale:invite.locale,expiresAt}});
+  res.status(201).json({invite:{id:invite.id,reviewerEmail:invite.reviewer_email,locale:invite.locale,expiresAt:invite.expires_at,url}});
+} catch (error) { next(error); } });
+
+router.delete('/reviewer-invites/:id', sameOrigin, adminSession, async (req,res,next) => { try {
+  const id=uuidSchema.parse(req.params.id);
+  const invite=await repo.revokeReviewerInvite(id);
+  if(!invite)return res.status(404).json({error:'not_found'});
+  await repo.audit({adminEmail:req.admin.email,action:'reviewer_invite_revoke',targetType:'reviewer_invite',targetId:id});
+  res.json({ok:true});
+} catch (error) { next(error); } });
 
 router.get('/analytics', noStore, adminSession, async (req, res, next) => {
   try { res.json(await repo.analyticsSummary()); }

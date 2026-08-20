@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { repo } from '../lib/repository.js';
 import { verifyWebhookSignature, verifyLeadCorrelation, transactionPriceIds, sanitizeTransactionPayload, sanitizeAdjustmentPayload } from '../lib/paddle.js';
 import { log } from '../lib/log.js';
+import { queueRealPaidGeneration } from '../services/fulfillment.js';
 
 const router = Router();
 
@@ -75,7 +76,7 @@ router.post('/paddle', async (req, res, next) => { try {
     });
 
     if (!wasPaid) {
-      await repo.updateLead(lead.id, {
+      const updatedLead=await repo.updateLead(lead.id, {
         payment_status:'paid',
         payment_provider:'paddle',
         payment_order_id:String(data.id),
@@ -90,6 +91,7 @@ router.post('/paddle', async (req, res, next) => { try {
         event_name:'payment_success',
         metadata:{ transactionId:String(data.id), amount, currency }
       });
+      await queueRealPaidGeneration(updatedLead).catch(error=>log.error('paid_generation_queue_failed',{leadId:updatedLead.id,provider:'paddle',error:error.message}));
     }
   } else if (isAdjustment && data.status === 'approved') {
     const payment = await repo.getPaymentByOrderId('paddle', String(data.transaction_id || ''));

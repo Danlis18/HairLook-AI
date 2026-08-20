@@ -177,7 +177,7 @@ create index if not exists admin_audit_logs_created_idx on public.admin_audit_lo
 
 insert into public.site_settings(key,value,type) values
   ('price_display_usd','15.00','string'),
-  ('generation_target_count','30','number'),
+  ('generation_target_count','10','number'),
   ('support_email','support@example.com','string'),
   ('checkout_enabled','true','boolean'),
   ('generation_enabled','true','boolean'),

@@ -6,6 +6,7 @@ import { repo } from '../lib/repository.js';
 import { log } from '../lib/log.js';
 import { sendMetaPurchase } from '../lib/meta.js';
 import { cryptoPriceForLead } from '../lib/pricing.js';
+import { queueRealPaidGeneration } from '../services/fulfillment.js';
 import { leadSession, sameOrigin, noStore } from '../middleware.js';
 
 const router = Router();
@@ -176,6 +177,7 @@ async function markPaid(intent,match,request){
   const updatedLead=await repo.updateLead(intent.lead_id,{payment_status:'paid',payment_provider:provider,payment_order_id:match.hash,payment_amount:baseAmount,payment_currency:'USDT',paid_at:paidAt,generation_status:'manual_pending'});
   await repo.insertAnalytics({session_id:'crypto',lead_id:intent.lead_id,event_name:'payment_success',metadata:{provider,network:intent.network,txHash:match.hash,expectedAmount:Number(intent.amount),receivedAmount,currency:'USDT'}});
   await sendMetaPurchase({lead:updatedLead,txHash:match.hash,request,value:baseAmount});
+  await queueRealPaidGeneration(updatedLead).catch(error=>log.error('paid_generation_queue_failed',{leadId:updatedLead.id,provider,error:error.message}));
   return paid;
 }
 async function refresh(intent,request){
@@ -190,6 +192,7 @@ async function refresh(intent,request){
 }
 
 router.post('/intents',sameOrigin,leadSession,async(req,res,next)=>{try{
+  if(req.lead.access_mode==='reviewer_demo')return res.status(403).json({error:'reviewer_demo_no_real_payment'});
   if(!config.checkoutEnabled)return res.status(503).json({error:'checkout_disabled'});
   if(config.emailVerificationEnabled&&!req.lead.email_verified_at)return res.status(403).json({error:'email_verification_required'});
   if(req.lead.upload_status!=='ready')return res.status(409).json({error:'upload_not_ready'});

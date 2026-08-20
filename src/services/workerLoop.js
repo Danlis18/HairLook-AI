@@ -5,13 +5,19 @@ import { generateHairEdit } from '../lib/ai.js';
 import { putResult, deleteOriginal, deleteResult } from '../lib/storage.js';
 import { sendResultsReady } from '../lib/mailer.js';
 import { localeFromLead } from '../lib/locale.js';
+import { randomToken, tokenHash } from '../lib/crypto.js';
 import { log } from '../lib/log.js';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function processOneJob(workerId) {
-  const job = await repo.claimJob(workerId);
-  if (!job) return false;
+async function resultsAccessUrl(lead) {
+  const raw=randomToken();
+  const expiresAt=new Date(Date.now()+Math.max(config.magicLinkTtlMinutes,1440)*60_000).toISOString();
+  await repo.createMagicLink({email:lead.email,purpose:'user',leadId:lead.id,tokenHash:tokenHash(raw),expiresAt});
+  return `${config.appUrl}/auth/magic?token=${encodeURIComponent(raw)}`;
+}
+
+export async function processClaimedJob(job) {
   try {
     const lead = await repo.getLead(job.lead_id);
     if (!lead) throw new Error('Lead no longer exists');
@@ -43,8 +49,11 @@ export async function processOneJob(workerId) {
     const status = finished ? (stats.failed > 0 ? 'partial' : 'completed') : 'processing';
     const updated = await repo.updateLead(lead.id, { generation_status: status });
     if (finished && !updated?.results_notified_at) {
-      await sendResultsReady({ to: lead.email, locale:localeFromLead(lead) }).catch(error => log.warn('results_email_failed', { leadId: lead.id, error: error.message }));
-      await repo.updateLead(lead.id, { results_notified_at: new Date().toISOString() });
+      try {
+        const url=await resultsAccessUrl(lead);
+        await sendResultsReady({to:lead.email,locale:localeFromLead(lead),url,force:lead.access_mode==='reviewer_demo',demo:lead.access_mode==='reviewer_demo'});
+        await repo.updateLead(lead.id,{results_notified_at:new Date().toISOString()});
+      } catch (error) { log.warn('results_email_failed', { leadId: lead.id, error: error.message }); }
     }
     log.info('generation_completed', { leadId: lead.id, jobId: job.id, resultCount, status });
   } catch (error) {
@@ -60,6 +69,19 @@ export async function processOneJob(workerId) {
     log.error('generation_failed', { jobId: job.id, leadId: job.lead_id, attempts, error: error.message });
   }
   return true;
+}
+
+export async function processOneJob(workerId, {leadId=null}={}) {
+  const job = leadId ? await repo.claimJobForLead(workerId,leadId) : await repo.claimJob(workerId);
+  if (!job) return false;
+  return processClaimedJob(job);
+}
+
+export async function processReviewerDemoLead(leadId) {
+  const workerId=`reviewer-${leadId.slice(0,8)}-${randomUUID().slice(0,8)}`;
+  let processed=0;
+  while(processed<10&&await processOneJob(workerId,{leadId}))processed+=1;
+  return processed;
 }
 
 export async function cleanupExpiredData() {

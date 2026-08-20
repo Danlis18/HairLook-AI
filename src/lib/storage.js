@@ -22,6 +22,12 @@ export async function signedOriginalUrl(key, expires=config.signedUrlTtlSeconds)
   const {data,error}=await getSupabase().storage.from(config.originalBucket).createSignedUrl(key,expires);if(error)throw error;return data.signedUrl;
 }
 
+export async function getOriginalBuffer(key) {
+  if(config.demoMode)return fs.readFile(path.resolve('data/uploads',key));
+  const {data,error}=await getSupabase().storage.from(config.originalBucket).download(key);if(error)throw error;
+  return Buffer.from(await data.arrayBuffer());
+}
+
 export async function signedResultUrl(key, expires=config.signedUrlTtlSeconds, download=false) {
   if(config.demoMode)return `${config.appUrl}/demo-storage/result/${encodeURIComponent(key)}${download?'?download=1':''}`;
   const {data,error}=await getSupabase().storage.from(config.resultsBucket).createSignedUrl(key,expires,download?{download:true}:undefined);if(error)throw error;return data.signedUrl;

@@ -8,7 +8,7 @@ const DEMO_DB = path.resolve('data/demo-db.json');
 const now = () => new Date().toISOString();
 const defaultState = () => ({
   hair_leads: [], lead_sessions: [], admin_sessions: [], magic_links: [], payments: [], payment_events: [],
-  generation_jobs: [], generation_results: [], analytics_events: [], admin_audit_logs: [], email_verification_challenges: [],
+  generation_jobs: [], generation_results: [], analytics_events: [], admin_audit_logs: [], email_verification_challenges: [], reviewer_demo_invites: [],
   site_settings: [
     { key:'price_display_usd', value: config.priceDisplayUsd, type:'string', updated_at:now() },
     { key:'generation_target_count', value:String(config.generationTargetCount), type:'number', updated_at:now() },
@@ -93,6 +93,33 @@ export const repo = {
     const {error}=await getSupabase().from('admin_sessions').delete().eq('token_hash',tokenHash);if(error)throw error;
   },
 
+  async createReviewerInvite({ tokenHash, reviewerEmail=null, locale='en', createdBy, expiresAt }) {
+    const row={id:randomUUID(),token_hash:tokenHash,reviewer_email:reviewerEmail?.toLowerCase()||null,locale,created_by:createdBy.toLowerCase(),expires_at:expiresAt,lead_id:null,used_at:null,revoked_at:null,created_at:now()};
+    if(config.demoMode){const s=loadDemo();s.reviewer_demo_invites=s.reviewer_demo_invites||[];s.reviewer_demo_invites.push(row);saveDemo(s);return normalizeRow(row);}
+    const {data,error}=await getSupabase().from('reviewer_demo_invites').insert({token_hash:row.token_hash,reviewer_email:row.reviewer_email,locale:row.locale,created_by:row.created_by,expires_at:row.expires_at}).select('*').single();if(error)throw error;return data;
+  },
+
+  async getReviewerInvite(tokenHash) {
+    if(config.demoMode){const row=(loadDemo().reviewer_demo_invites||[]).find(x=>x.token_hash===tokenHash);return normalizeRow(row);}
+    const {data,error}=await getSupabase().from('reviewer_demo_invites').select('*').eq('token_hash',tokenHash).maybeSingle();if(error)throw error;return data;
+  },
+
+  async claimReviewerInvite(tokenHash, leadId, email) {
+    if(config.demoMode){const s=loadDemo();s.reviewer_demo_invites=s.reviewer_demo_invites||[];const row=s.reviewer_demo_invites.find(x=>x.token_hash===tokenHash&&!x.revoked_at&&!x.used_at&&!x.lead_id&&x.expires_at>now()&&(!x.reviewer_email||x.reviewer_email===String(email).toLowerCase()));if(!row)return null;row.lead_id=leadId;row.used_at=now();saveDemo(s);return normalizeRow(row);}
+    const {data,error}=await getSupabase().rpc('claim_reviewer_demo_invite',{p_token_hash:tokenHash,p_lead_id:leadId,p_email:String(email).toLowerCase()});if(error)throw error;return Array.isArray(data)?data[0]||null:data;
+  },
+
+  async listReviewerInvites(limit=100) {
+    if(config.demoMode)return (loadDemo().reviewer_demo_invites||[]).slice().sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,limit).map(normalizeRow);
+    const {data,error}=await getSupabase().from('reviewer_demo_invites').select('id,reviewer_email,locale,created_by,expires_at,lead_id,used_at,revoked_at,created_at').order('created_at',{ascending:false}).limit(limit);if(error)throw error;return data||[];
+  },
+
+  async revokeReviewerInvite(id) {
+    const revokedAt=now();
+    if(config.demoMode){const s=loadDemo();const row=(s.reviewer_demo_invites||[]).find(x=>x.id===id);if(!row)return null;row.revoked_at=revokedAt;saveDemo(s);return normalizeRow(row);}
+    const {data,error}=await getSupabase().from('reviewer_demo_invites').update({revoked_at:revokedAt}).eq('id',id).select('*').maybeSingle();if(error)throw error;return data;
+  },
+
   async createMagicLink({ email, purpose, leadId=null, tokenHash, expiresAt }) {
     const row={id:randomUUID(),email:email.toLowerCase(),purpose,lead_id:leadId,token_hash:tokenHash,expires_at:expiresAt,used_at:null,created_at:now()};
     if(config.demoMode){const s=loadDemo();s.magic_links.push(row);saveDemo(s);return row;}
@@ -156,6 +183,11 @@ export const repo = {
   async claimJob(workerId) {
     if(config.demoMode){const s=loadDemo();const job=s.generation_jobs.filter(x=>x.status==='queued' || (x.status==='retry' && (!x.run_after || x.run_after<=now()))).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.created_at.localeCompare(b.created_at))[0];if(!job)return null;job.status='processing';job.worker_id=workerId;job.started_at=now();job.updated_at=now();job.attempts=(job.attempts||0)+1;saveDemo(s);return normalizeRow(job);}
     const {data,error}=await getSupabase().rpc('claim_generation_job',{p_worker_id:workerId});if(error)throw error;return Array.isArray(data)?data[0]||null:data;
+  },
+
+  async claimJobForLead(workerId, leadId) {
+    if(config.demoMode){const s=loadDemo();const job=s.generation_jobs.filter(x=>x.lead_id===leadId&&(x.status==='queued'||(x.status==='retry'&&(!x.run_after||x.run_after<=now())))).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.created_at.localeCompare(b.created_at))[0];if(!job)return null;job.status='processing';job.worker_id=workerId;job.started_at=now();job.updated_at=now();job.attempts=(job.attempts||0)+1;saveDemo(s);return normalizeRow(job);}
+    const {data,error}=await getSupabase().rpc('claim_generation_job_for_lead',{p_worker_id:workerId,p_lead_id:leadId});if(error)throw error;return Array.isArray(data)?data[0]||null:data;
   },
 
   async updateJob(id, patch) {
@@ -242,7 +274,7 @@ export const repo = {
   },
 
   async overview() {
-    if(config.demoMode){const s=loadDemo();const paid=s.hair_leads.filter(x=>x.payment_status==='paid');const revenue=s.payments.filter(x=>x.status==='paid').reduce((sum,x)=>sum+Number(x.amount||0),0);const completed=s.generation_jobs.filter(x=>x.status==='completed').length;const terminal=s.generation_jobs.filter(x=>['completed','failed'].includes(x.status)).length;const totalAiCost=s.generation_results.filter(x=>!x.deleted_at).reduce((sum,x)=>sum+Number(x.cost_usd||0),0);return {revenue,paidCustomers:paid.length,leads:s.hair_leads.length,leadToPaid:s.hair_leads.length?paid.length/s.hair_leads.length:0,generationSuccess:terminal?completed/terminal:0,resultCount:s.generation_results.filter(x=>!x.deleted_at).length,avgAiCostPerOrder:paid.length?totalAiCost/paid.length:0};}
+    if(config.demoMode){const s=loadDemo();const customers=s.hair_leads.filter(x=>x.access_mode!=='reviewer_demo'),customerIds=new Set(customers.map(x=>x.id));const paid=customers.filter(x=>x.payment_status==='paid');const revenue=s.payments.filter(x=>x.status==='paid'&&customerIds.has(x.lead_id)).reduce((sum,x)=>sum+Number(x.amount||0),0);const customerJobs=s.generation_jobs.filter(x=>customerIds.has(x.lead_id)),completed=customerJobs.filter(x=>x.status==='completed').length,terminal=customerJobs.filter(x=>['completed','failed'].includes(x.status)).length;const customerResults=s.generation_results.filter(x=>customerIds.has(x.lead_id)&&!x.deleted_at),totalAiCost=customerResults.reduce((sum,x)=>sum+Number(x.cost_usd||0),0);return {revenue,paidCustomers:paid.length,leads:customers.length,leadToPaid:customers.length?paid.length/customers.length:0,generationSuccess:terminal?completed/terminal:0,resultCount:customerResults.length,avgAiCostPerOrder:paid.length?totalAiCost/paid.length:0};}
     const {data,error}=await getSupabase().rpc('hairlook_admin_overview');if(error)throw error;return data||{revenue:0,paidCustomers:0,leads:0,leadToPaid:0,generationSuccess:0,resultCount:0,avgAiCostPerOrder:0};
   },
 
@@ -269,7 +301,7 @@ export const repo = {
   },
 
   async deleteLead(id) {
-    if(config.demoMode){const s=loadDemo();for(const k of ['hair_leads','lead_sessions','payments','generation_jobs','generation_results','email_verification_challenges'])s[k]=(s[k]||[]).filter(x=>(x.lead_id||x.id)!==id);s.magic_links=s.magic_links.filter(x=>x.lead_id!==id);saveDemo(s);return;}
+    if(config.demoMode){const s=loadDemo();for(const k of ['hair_leads','lead_sessions','payments','generation_jobs','generation_results','email_verification_challenges'])s[k]=(s[k]||[]).filter(x=>(x.lead_id||x.id)!==id);s.magic_links=s.magic_links.filter(x=>x.lead_id!==id);for(const invite of s.reviewer_demo_invites||[])if(invite.lead_id===id)invite.lead_id=null;saveDemo(s);return;}
     const {error}=await getSupabase().from('hair_leads').delete().eq('id',id);if(error)throw error;
   },
 

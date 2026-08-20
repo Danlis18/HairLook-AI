@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import { repo } from '../lib/repository.js';
 import { log } from '../lib/log.js';
 import { leadSession, sameOrigin } from '../middleware.js';
+import { queueRealPaidGeneration } from '../services/fulfillment.js';
 
 const router = Router();
 
@@ -50,6 +51,7 @@ function sanitizeHotmartPayload(body={}) {
 }
 
 router.post('/checkout', sameOrigin, leadSession, async (req,res,next) => { try {
+  if(req.lead.access_mode==='reviewer_demo')return res.status(403).json({error:'reviewer_demo_no_real_payment'});
   const settings = await repo.getSettings();
   if (String(settings.checkout_enabled ?? config.checkoutEnabled) === 'false') return res.status(503).json({ error:'checkout_disabled' });
   if (config.emailVerificationEnabled && !req.lead.email_verified_at) return res.status(403).json({ error:'email_verification_required' });
@@ -143,7 +145,7 @@ router.post('/webhook', async (req,res,next) => { try {
       raw_payload:safePayload
     });
     if (!wasPaid) {
-      await repo.updateLead(lead.id, {
+      const updatedLead=await repo.updateLead(lead.id, {
         payment_status:'paid',
         payment_provider:'hotmart',
         payment_order_id:transaction,
@@ -158,6 +160,7 @@ router.post('/webhook', async (req,res,next) => { try {
         event_name:'payment_success',
         metadata:{ transactionId:transaction, amount, currency, paymentType:purchase.payment?.type || null }
       });
+      await queueRealPaidGeneration(updatedLead).catch(error=>log.error('paid_generation_queue_failed',{leadId:updatedLead.id,provider:'hotmart',error:error.message}));
     }
   } else if (reversalMap[eventType]) {
     const status = reversalMap[eventType];

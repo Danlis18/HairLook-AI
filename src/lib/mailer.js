@@ -109,22 +109,23 @@ export async function sendVerificationCode({to,code,locale='en'}){
   return result.skipped?{devCode:code}:{};
 }
 
-export async function sendResultsReady({to,locale='en'}){
-  if(config.manualFulfillmentMode){
+export async function sendResultsReady({to,locale='en',url=`${config.appUrl}/signin?next=dashboard`,force=false,demo=false}){
+  if(config.manualFulfillmentMode&&!force){
     log.info('results_email_skipped_manual_fulfillment',{to});
     return {skipped:true};
   }
   const {copy}=emailCopy(locale);
-  const subject=copy.resultsSubject;
-  const text=copy.resultsText;
+  const subject=demo?`[DEMO] ${copy.resultsSubject}`:copy.resultsSubject;
+  const resultText=locale==='pt-BR'?`Sua coleção personalizada de penteados está pronta. Acesse com segurança: ${url}`:`Your personalized hairstyle collection is ready. Open it securely: ${url}`;
+  const text=demo?`${resultText}\n\n${locale==='pt-BR'?'Nota de demonstração: estas prévias validam o fluxo de entrega; o modelo externo de IA ainda não está conectado.':'Demo note: these previews validate the delivery pipeline; the external AI model is not connected yet.'}`:resultText;
   const html=emailShell({
     locale,
     preheader:copy.resultsPreheader,
     title:copy.resultsTitle,
-    lead:copy.resultsLead,
-    content:'',
+    lead:demo?`${copy.resultsLead} ${locale==='pt-BR'?'Estas prévias demonstram o fluxo; o modelo externo de IA ainda não está conectado.':'These previews demonstrate the workflow; the external AI model is not connected yet.'}`:copy.resultsLead,
+    content:demo?`<tr><td style="padding:8px 24px 20px"><div style="background:#fff4d8;border:1px solid #ead9a5;border-radius:14px;padding:12px 14px;font-family:Arial,sans-serif;font-size:12px;line-height:1.5;color:#6b5722">${escapeHtml(locale==='pt-BR'?'Modo de demonstração: nenhuma cobrança foi realizada e as imagens são prévias locais da automação.':'Demo mode: no charge was made and the images are local automation previews.')}</div></td></tr>`:'',
     ctaLabel:copy.resultsCta,
-    ctaUrl:`${config.appUrl}/dashboard`
+    ctaUrl:url
   });
   return sendMailSafe({to,subject,text,html,reason:'results_ready'});
 }

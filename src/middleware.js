@@ -11,6 +11,27 @@ export async function optionalLeadSession(req,res,next){
 export async function adminSession(req,res,next){
   try{const raw=req.cookies?.hair_admin_session;if(!raw)return res.status(401).json({error:'admin_sign_in_required'});const admin=await repo.getAdminBySession(tokenHash(raw));if(!admin)return res.status(401).json({error:'admin_session_expired'});req.admin=admin;next();}catch(e){next(e);}
 }
+export async function optionalReviewerAccess(req,res,next){
+  try{
+    const raw=req.cookies?.hair_reviewer_access;
+    if(raw){
+      const invite=await repo.getReviewerInvite(tokenHash(raw));
+      if(invite&&!invite.revoked_at&&new Date(invite.expires_at).getTime()>Date.now())req.reviewerInvite=invite;
+    }
+    next();
+  }catch(e){next(e);}
+}
+export async function reviewerAccess(req,res,next){
+  try{
+    const raw=req.cookies?.hair_reviewer_access;
+    if(!raw)return res.status(403).json({error:'reviewer_access_required'});
+    const invite=await repo.getReviewerInvite(tokenHash(raw));
+    const active=invite&&!invite.revoked_at&&new Date(invite.expires_at).getTime()>Date.now();
+    if(!active||!req.lead||invite.lead_id!==req.lead.id||req.lead.access_mode!=='reviewer_demo')return res.status(403).json({error:'reviewer_access_expired'});
+    req.reviewerInvite=invite;
+    next();
+  }catch(e){next(e);}
+}
 export function sameOrigin(req,res,next){
   if(['GET','HEAD','OPTIONS'].includes(req.method))return next();
   const origin=req.get('origin');

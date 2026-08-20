@@ -65,10 +65,14 @@ Request the admin magic link on `/admin`; in demo mode the UI surfaces the local
 
 ## Production: 1. Supabase
 
-Create a Supabase project and run:
+Create a Supabase project and run all migrations in numeric order:
 
 ```text
 supabase/migrations/001_hairlook.sql
+supabase/migrations/002_email_verification.sql
+supabase/migrations/003_paddle_readiness.sql
+supabase/migrations/004_crypto_payments.sql
+supabase/migrations/005_reviewer_demo.sql
 ```
 
 The migration creates:
@@ -245,7 +249,9 @@ npm run worker
 
 Use the same environment variables. `railway-worker.json` is included as a reference; Railway can also use a service-level start-command override.
 
-The web request that receives a successful IPN only records payment state and enqueues jobs. It does not wait for 30 AI calls.
+The web request that receives a successful payment only records payment state and enqueues jobs. It does not wait for 10 AI calls.
+
+The isolated, no-charge reviewer workflow and the later AI activation checklist are documented in `docs/REVIEWER_DEMO.md`.
 
 ## Environment variables
 

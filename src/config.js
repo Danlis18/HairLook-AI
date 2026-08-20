@@ -32,7 +32,7 @@ export const config = Object.freeze({
   usDiscountPercent: Math.min(99, Math.max(0, number(process.env.US_DISCOUNT_PERCENT, 72))),
   compareAtPriceUsd: process.env.COMPARE_AT_PRICE_USD || '24.99',
   compareAtPriceBrl: process.env.COMPARE_AT_PRICE_BRL || '129.90',
-  generationTargetCount: integer(process.env.GENERATION_TARGET_COUNT, 30),
+  generationTargetCount: integer(process.env.GENERATION_TARGET_COUNT, 10),
 
   supabaseUrl: process.env.SUPABASE_URL || '',
   supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',
@@ -89,6 +89,7 @@ export const config = Object.freeze({
   emailVerificationMaxAttempts: integer(process.env.EMAIL_VERIFICATION_MAX_ATTEMPTS, 5),
   sessionTtlDays: integer(process.env.SESSION_TTL_DAYS, 30),
   adminSessionTtlHours: integer(process.env.ADMIN_SESSION_TTL_HOURS, 12),
+  reviewerInviteTtlHours: Math.min(168, Math.max(1, integer(process.env.REVIEWER_INVITE_TTL_HOURS, 24))),
 
   maxUploadMb: integer(process.env.MAX_UPLOAD_MB, 12),
   originalRetentionHours: integer(process.env.ORIGINAL_RETENTION_HOURS, 720),

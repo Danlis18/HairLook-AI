@@ -11,7 +11,8 @@ import { sendMagicLink, sendVerificationCode } from '../lib/mailer.js';
 import { sendMetaLead } from '../lib/meta.js';
 import { localeFromBody, localeFromLead, normalizeCountry, resolveRequestLocale } from '../lib/locale.js';
 import { cryptoPriceForLead, storefrontPricing } from '../lib/pricing.js';
-import { leadSession, optionalLeadSession, sameOrigin, noStore } from '../middleware.js';
+import { queueReviewerDemo, startReviewerDemoProcessing, RESULT_TARGET_COUNT } from '../services/fulfillment.js';
+import { leadSession, optionalLeadSession, optionalReviewerAccess, reviewerAccess, sameOrigin, noStore } from '../middleware.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 1 } });
@@ -40,7 +41,7 @@ async function issueEmailChallenge(lead, locale = localeFromLead(lead)) {
   const sent = await sendVerificationCode({ to:lead.email, code, locale });
   return sent.devCode;
 }
-function clientConfig(settings = {}, localeContext = {locale:'en',country:''}, leadCountry = '') {
+function clientConfig(settings = {}, localeContext = {locale:'en',country:''}, leadCountry = '', reviewerDemo = false) {
   const pricing = storefrontPricing({ country:normalizeCountry(leadCountry) || localeContext.country, locale:localeContext.locale });
   return {
     productName: config.productName,
@@ -54,9 +55,10 @@ function clientConfig(settings = {}, localeContext = {locale:'en',country:''}, l
     siteLocale: localeContext.locale,
     siteCountry: pricing.country || localeContext.country || '',
     siteCurrency: pricing.currency,
-    generationTargetCount: Number(settings.generation_target_count || config.generationTargetCount),
+    generationTargetCount: RESULT_TARGET_COUNT,
     checkoutEnabled: String(settings.checkout_enabled ?? config.checkoutEnabled) !== 'false',
     demoMode: config.demoMode,
+    reviewerDemo,
     maxUploadMb: config.maxUploadMb,
     legalBusinessName: config.legalBusinessName,
     legalBusinessAddress: config.legalBusinessAddress,
@@ -65,26 +67,36 @@ function clientConfig(settings = {}, localeContext = {locale:'en',country:''}, l
   };
 }
 
-router.get('/config', noStore, optionalLeadSession, async (req,res,next) => { try { res.json(clientConfig(await repo.getSettings(), await resolveRequestLocale(req), req.lead?.country)); } catch (e) { next(e); } });
+router.get('/config', noStore, optionalLeadSession, optionalReviewerAccess, async (req,res,next) => { try { res.json(clientConfig(await repo.getSettings(), await resolveRequestLocale(req), req.lead?.country, !!req.reviewerInvite&&(!req.reviewerInvite.lead_id||req.reviewerInvite.lead_id===req.lead?.id))); } catch (e) { next(e); } });
 router.get('/locale', noStore, async (req,res,next) => { try { res.json(await resolveRequestLocale(req)); } catch (e) { next(e); } });
+
+router.get('/reviewer/accept', noStore, async (req,res,next) => { try {
+  const raw=z.string().min(20).max(200).parse(req.query.token);
+  const invite=await repo.getReviewerInvite(tokenHash(raw));
+  if(!invite||invite.revoked_at||invite.used_at||invite.lead_id||new Date(invite.expires_at).getTime()<=Date.now())return res.redirect('/?reviewer=expired');
+  res.cookie('hair_reviewer_access',raw,{httpOnly:true,secure:config.isProduction,sameSite:'lax',maxAge:Math.max(1,new Date(invite.expires_at).getTime()-Date.now()),path:'/'});
+  const lang=invite.locale==='pt-BR'?'pt-BR':'en';
+  res.redirect(`/?lang=${encodeURIComponent(lang)}&reviewer=1`);
+} catch (e) { next(e); } });
 router.post('/analytics', sameOrigin, async (req,res,next) => { try {
   const body = z.object({ sessionId:z.string().max(120), leadId:z.string().uuid().optional().nullable(), eventName:z.string().regex(/^[a-z0-9_]{2,80}$/), metadata:z.record(z.string(),z.any()).optional() }).parse(req.body);
   await repo.insertAnalytics({ session_id:body.sessionId, lead_id:body.leadId || null, event_name:body.eventName, metadata:body.metadata || {} });
   res.status(202).json({ ok:true });
 } catch (e) { next(e); } });
 
-router.post('/leads', sameOrigin, upload.single('photo'), async (req,res,next) => { try {
+router.post('/leads', sameOrigin, optionalReviewerAccess, upload.single('photo'), async (req,res,next) => { try {
   const runtimeSettings = await repo.getSettings();
   if (String(runtimeSettings.maintenance_mode ?? config.maintenanceMode) === 'true') return res.status(503).json({ error:'maintenance' });
   if (!req.file) return res.status(400).json({ error:'photo_required' });
   const email = emailSchema.parse(req.body.email);
+  if(req.reviewerInvite?.reviewer_email&&req.reviewerInvite.reviewer_email!==email)return res.status(403).json({error:'reviewer_email_mismatch'});
   if (String(req.body.consent) !== 'true') return res.status(400).json({ error:'consent_required' });
   const rawQuiz = parseJsonField(req.body.quiz, {});
   const locale = localeFromBody(req.body.locale || rawQuiz?._locale);
   const localeContext = await resolveRequestLocale(req);
   const submittedCountry = normalizeCountry(req.body.country);
   const country = localeContext.country || (submittedCountry === 'US' ? '' : submittedCountry);
-  const quiz = { ...quizSchema.parse(rawQuiz), _locale:locale, _quizEnabled:rawQuiz?._quizEnabled === true };
+  const quiz = { ...quizSchema.parse(rawQuiz), _locale:locale, _quizEnabled:rawQuiz?._quizEnabled === true, _reviewerDemo:!!req.reviewerInvite };
   const utm = z.record(z.string(),z.any()).parse(parseJsonField(req.body.utm, {}));
   let meta;
   try { meta = await sharp(req.file.buffer, { failOn:'error' }).metadata(); } catch { return res.status(400).json({ error:'invalid_image' }); }
@@ -96,17 +108,22 @@ router.post('/leads', sameOrigin, upload.single('photo'), async (req,res,next) =
     desired_colors:quiz.desiredColors, style_goals:quiz.styleGoals, style_personality:quiz.stylePersonality, maintenance_level:quiz.maintenanceLevel, bangs_preference:quiz.bangsPreference, gray_preference:quiz.grayPreference,
     quiz_answers:quiz, upload_status:'processing', payment_status:'unpaid', payment_provider:'paddle', generation_status:'not_started', source:utm.source || utm.utm_source || null,
     utm_source:utm.utm_source || null, utm_medium:utm.utm_medium || null, utm_campaign:utm.utm_campaign || null, utm_content:utm.utm_content || null, utm_term:utm.utm_term || null,
-    landing_url:req.body.landingUrl || null, ip_hash:hashIp(req.ip), country:country || null, consent_at:new Date().toISOString()
+    landing_url:req.body.landingUrl || null, ip_hash:hashIp(req.ip), country:country || null, consent_at:new Date().toISOString(), ...(req.reviewerInvite?{access_mode:'reviewer_demo'}:{})
   });
   try {
     const key = await putOriginal(lead.id, cleaned, 'image/jpeg');
     await repo.updateLead(lead.id, { upload_path:key, upload_status:'ready' });
+    if(req.reviewerInvite){
+      const claimed=await repo.claimReviewerInvite(tokenHash(req.cookies.hair_reviewer_access),lead.id,email);
+      if(!claimed){await deleteOriginal(key).catch(()=>{});await repo.deleteLead(lead.id);return res.status(409).json({error:'reviewer_invite_already_used'});}
+    }
   } catch (e) {
     await repo.updateLead(lead.id, { upload_status:'failed' });
+    if(req.reviewerInvite)await repo.deleteLead(lead.id).catch(()=>{});
     throw e;
   }
   await createLeadSession(res, lead.id);
-  await repo.insertAnalytics({ session_id:req.body.sessionId || 'unknown', lead_id:lead.id, event_name:'upload_complete', metadata:{ format:meta.format, width:meta.width, height:meta.height } });
+  await repo.insertAnalytics({ session_id:req.body.sessionId || 'unknown', lead_id:lead.id, event_name:req.reviewerInvite?'reviewer_upload_complete':'upload_complete', metadata:{ format:meta.format, width:meta.width, height:meta.height } });
   if (config.emailVerificationEnabled) {
     const devCode = await issueEmailChallenge(lead, locale);
     return res.status(201).json({ leadId:lead.id, next:'/personal-plan', emailVerificationRequired:true, ...(config.demoMode ? { devCode } : {}) });
@@ -132,9 +149,12 @@ router.post('/verify-email', sameOrigin, leadSession, async (req,res,next) => { 
   await repo.touchEmailChallenge(challenge.id, { used_at:verifiedAt });
   const verifiedLead = await repo.updateLead(req.lead.id, { email_verified_at:verifiedAt });
   await repo.insertAnalytics({ session_id:'server', lead_id:req.lead.id, event_name:'email_verified', metadata:{} }).catch(() => {});
-  const metaLeadEventId = `lead:${req.lead.id}`;
-  await sendMetaLead({ lead:verifiedLead, request:req, eventId:metaLeadEventId });
-  res.json({ ok:true, metaLeadEventId });
+  let metaLeadEventId=null;
+  if(verifiedLead.access_mode!=='reviewer_demo'){
+    metaLeadEventId=`lead:${req.lead.id}`;
+    await sendMetaLead({ lead:verifiedLead, request:req, eventId:metaLeadEventId });
+  }
+  res.json({ ok:true, ...(metaLeadEventId?{metaLeadEventId}:{}) });
 } catch (e) { next(e); } });
 
 router.post('/verify-email/resend', sameOrigin, leadSession, async (req,res,next) => { try {
@@ -169,10 +189,11 @@ router.post('/verify-email/change', sameOrigin, leadSession, async (req,res,next
 router.get('/me', noStore, optionalLeadSession, async (req,res,next) => { try {
   if (!req.lead) return res.json({ authenticated:false });
   const count = await repo.countResults(req.lead.id);
-  res.json({ authenticated:true, lead:{ id:req.lead.id, email:req.lead.email, paymentStatus:req.lead.payment_status, generationStatus:req.lead.generation_status, resultCount:count } });
+  res.json({ authenticated:true, lead:{ id:req.lead.id, email:req.lead.email, paymentStatus:req.lead.payment_status, generationStatus:req.lead.generation_status, resultCount:count, accessMode:req.lead.access_mode||'customer' } });
 } catch (e) { next(e); } });
 
 router.post('/checkout', sameOrigin, leadSession, async (req,res,next) => { try {
+  if(req.lead.access_mode==='reviewer_demo')return res.status(403).json({error:'reviewer_demo_no_real_payment'});
   const settings = await repo.getSettings();
   if (String(settings.checkout_enabled ?? config.checkoutEnabled) === 'false') return res.status(503).json({ error:'checkout_disabled' });
   if (config.emailVerificationEnabled && !req.lead.email_verified_at) return res.status(403).json({ error:'email_verification_required' });
@@ -204,22 +225,38 @@ router.post('/demo/pay', sameOrigin, leadSession, async (req,res,next) => { try 
   res.json({ ok:true, redirect:'/dashboard' });
 } catch (e) { next(e); } });
 
+router.post('/reviewer/pay', sameOrigin, leadSession, reviewerAccess, async (req,res,next) => { try {
+  if(config.emailVerificationEnabled&&!req.lead.email_verified_at)return res.status(403).json({error:'email_verification_required'});
+  if(req.lead.upload_status!=='ready')return res.status(409).json({error:'upload_not_ready'});
+  if(req.lead.payment_status==='paid')return res.json({ok:true,alreadyPaid:true,redirect:'/dashboard'});
+  if(req.body?.acceptedPurchaseTerms!==true)return res.status(400).json({error:'purchase_terms_required'});
+  const paidAt=new Date().toISOString();
+  const orderId=`REVIEWER-${req.lead.id}`;
+  const updatedLead=await repo.updateLead(req.lead.id,{payment_status:'paid',payment_provider:'reviewer_demo',payment_order_id:orderId,payment_amount:0,payment_currency:'USD',paid_at:paidAt,generation_status:'queued'});
+  await repo.upsertPayment({lead_id:req.lead.id,provider:'reviewer_demo',provider_order_id:orderId,status:'paid',amount:0,currency:'USD',paid_at:paidAt,raw_payload:{reviewerDemo:true,noCharge:true,inviteId:req.reviewerInvite.id}});
+  await repo.insertAnalytics({session_id:req.body?.sessionId||'reviewer-demo',lead_id:req.lead.id,event_name:'reviewer_checkout_start',metadata:{provider:'reviewer_demo',noCharge:true}});
+  await repo.insertAnalytics({session_id:req.body?.sessionId||'reviewer-demo',lead_id:req.lead.id,event_name:'reviewer_payment_success',metadata:{provider:'reviewer_demo',amount:0,currency:'USD',noCharge:true}});
+  await queueReviewerDemo(updatedLead);
+  startReviewerDemoProcessing(req.lead.id);
+  res.json({ok:true,noCharge:true,targetCount:RESULT_TARGET_COUNT,redirect:'/dashboard'});
+} catch (e) { next(e); } });
+
 router.get('/dashboard', noStore, leadSession, async (req,res,next) => { try {
   const results = await repo.listResults(req.lead.id);
   const safe = [];
-  for (const r of results) if (!r.deleted_at) safe.push({ ...r, url:await signedResultUrl(r.storage_path) });
+  for (const r of results) if (!r.deleted_at) safe.push({ id:r.id,category:r.category,style_name:r.style_name,sort_order:r.sort_order,url:await signedResultUrl(r.storage_path) });
   const settings = await repo.getSettings();
-  const targetCount = Math.min(30, Math.max(1, Number(settings.generation_target_count || config.generationTargetCount)));
+  const targetCount = RESULT_TARGET_COUNT;
   const isPaid = req.lead.payment_status === 'paid';
   const orderId = String(req.lead.payment_order_id || '').trim();
   const isCrypto = String(req.lead.payment_provider || '').startsWith('crypto_');
-  const purchase = isPaid && orderId ? {
+  const purchase = isPaid && orderId && req.lead.access_mode!=='reviewer_demo' ? {
     eventId:isCrypto ? `crypto:${orderId}` : `purchase:${orderId}`,
     orderId,
     value:isCrypto ? cryptoPriceForLead(req.lead) : Number(req.lead.payment_amount || cryptoPriceForLead(req.lead)),
     currency:isCrypto ? 'USD' : String(req.lead.payment_currency || config.siteCurrency || 'USD').toUpperCase()
   } : null;
-  res.json({ lead:{ id:req.lead.id, email:req.lead.email, paymentStatus:req.lead.payment_status, generationStatus:req.lead.generation_status, profile:{ ageRange:req.lead.age_range, currentLength:req.lead.current_length, desiredLength:req.lead.desired_length, texture:req.lead.texture, currentColor:req.lead.current_color, desiredColors:req.lead.desired_colors, styleGoals:req.lead.style_goals, grayPreference:req.lead.gray_preference } }, purchase, targetCount, results:safe });
+  res.json({ lead:{ id:req.lead.id, email:req.lead.email, paymentStatus:req.lead.payment_status, generationStatus:req.lead.generation_status, accessMode:req.lead.access_mode||'customer', profile:{ ageRange:req.lead.age_range, currentLength:req.lead.current_length, desiredLength:req.lead.desired_length, texture:req.lead.texture, currentColor:req.lead.current_color, desiredColors:req.lead.desired_colors, styleGoals:req.lead.style_goals, grayPreference:req.lead.gray_preference } }, purchase, targetCount, results:safe });
 } catch (e) { next(e); } });
 
 router.get('/results/:id/download', leadSession, async (req,res,next) => { try {
