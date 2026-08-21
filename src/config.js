@@ -90,6 +90,9 @@ export const config = Object.freeze({
   sessionTtlDays: integer(process.env.SESSION_TTL_DAYS, 30),
   adminSessionTtlHours: integer(process.env.ADMIN_SESSION_TTL_HOURS, 12),
   reviewerInviteTtlHours: Math.min(168, Math.max(1, integer(process.env.REVIEWER_INVITE_TTL_HOURS, 24))),
+  reviewerAiEnabled: bool(process.env.REVIEWER_AI_ENABLED, false),
+  reviewerAiConcurrency: Math.min(2, Math.max(1, integer(process.env.REVIEWER_AI_CONCURRENCY, 1))),
+  reviewerAiPollMs: Math.max(1000, integer(process.env.REVIEWER_AI_POLL_INTERVAL_MS, 2500)),
 
   maxUploadMb: integer(process.env.MAX_UPLOAD_MB, 12),
   originalRetentionHours: integer(process.env.ORIGINAL_RETENTION_HOURS, 720),
@@ -104,6 +107,10 @@ export const config = Object.freeze({
 });
 
 export function assertProductionConfig() {
+  if (config.reviewerAiEnabled) {
+    if (config.aiProvider !== 'replicate') throw new Error(`Unsupported reviewer AI provider: ${config.aiProvider}`);
+    if (!config.replicateToken) throw new Error('Missing required variable: REPLICATE_API_TOKEN (required because REVIEWER_AI_ENABLED=true)');
+  }
   if (!config.isProduction || config.demoMode) return;
   const required = [
     ['APP_URL', process.env.APP_URL],

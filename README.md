@@ -53,7 +53,7 @@ npm start
 
 Open `http://localhost:3000`.
 
-Demo checkout simulates a verified payment and the web process also runs an in-process demo worker for convenience. Production keeps the web and worker processes separate.
+Demo checkout simulates a verified payment and the web process also runs an in-process demo worker for convenience. Production can run a reviewer-only AI loop inside the web service; a separate worker is reserved for broader paid-order automation.
 
 Demo admin email:
 
@@ -73,6 +73,7 @@ supabase/migrations/002_email_verification.sql
 supabase/migrations/003_paddle_readiness.sql
 supabase/migrations/004_crypto_payments.sql
 supabase/migrations/005_reviewer_demo.sql
+supabase/migrations/006_inline_reviewer_ai.sql
 ```
 
 The migration creates:
@@ -188,6 +189,8 @@ AI_PROVIDER=replicate
 AI_PRIMARY_MODEL=black-forest-labs/flux-kontext-pro
 REPLICATE_API_TOKEN=
 AI_ESTIMATED_COST_USD=0.04
+REVIEWER_AI_ENABLED=false
+REVIEWER_AI_CONCURRENCY=1
 ```
 
 `AI_ESTIMATED_COST_USD` is accounting metadata only and must be updated when provider pricing changes. It is not used to charge customers.
@@ -239,7 +242,7 @@ Healthcheck:
 
 `railway.json` is configured for this service.
 
-### Worker service
+### Optional worker service for automatic paid-order fulfillment
 
 Start command:
 
@@ -247,9 +250,9 @@ Start command:
 npm run worker
 ```
 
-Use the same environment variables. `railway-worker.json` is included as a reference; Railway can also use a service-level start-command override.
+Use the same environment variables. `railway-worker.json` is included as a reference; Railway can also use a service-level start-command override. It is not required when real AI is enabled only for isolated Reviewer Demo links.
 
-The web request that receives a successful payment only records payment state and enqueues jobs. It does not wait for 10 AI calls.
+The web request records payment state and enqueues jobs; it never waits for 10 AI calls. With `REVIEWER_AI_ENABLED=true`, the web process resumes and handles reviewer jobs in the background while leaving normal customer jobs untouched. Completed collections provide ten private image downloads plus an on-demand A4 PDF report linked from the EN/PT dashboard and results email.
 
 The isolated, no-charge reviewer workflow and the later AI activation checklist are documented in `docs/REVIEWER_DEMO.md`.
 

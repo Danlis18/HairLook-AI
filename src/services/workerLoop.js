@@ -5,17 +5,10 @@ import { generateHairEdit } from '../lib/ai.js';
 import { putResult, deleteOriginal, deleteResult } from '../lib/storage.js';
 import { sendResultsReady } from '../lib/mailer.js';
 import { localeFromLead } from '../lib/locale.js';
-import { randomToken, tokenHash } from '../lib/crypto.js';
 import { log } from '../lib/log.js';
+import { createResultsDeliveryLinks } from './resultsDelivery.js';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-async function resultsAccessUrl(lead) {
-  const raw=randomToken();
-  const expiresAt=new Date(Date.now()+Math.max(config.magicLinkTtlMinutes,1440)*60_000).toISOString();
-  await repo.createMagicLink({email:lead.email,purpose:'user',leadId:lead.id,tokenHash:tokenHash(raw),expiresAt});
-  return `${config.appUrl}/auth/magic?token=${encodeURIComponent(raw)}`;
-}
 
 export async function processClaimedJob(job) {
   try {
@@ -50,8 +43,9 @@ export async function processClaimedJob(job) {
     const updated = await repo.updateLead(lead.id, { generation_status: status });
     if (finished && !updated?.results_notified_at) {
       try {
-        const url=await resultsAccessUrl(lead);
-        await sendResultsReady({to:lead.email,locale:localeFromLead(lead),url,force:lead.access_mode==='reviewer_demo',demo:lead.access_mode==='reviewer_demo'});
+        const {url,pdfUrl}=await createResultsDeliveryLinks(lead);
+        const reviewerDemo=lead.access_mode==='reviewer_demo';
+        await sendResultsReady({to:lead.email,locale:localeFromLead(lead),url,pdfUrl,force:reviewerDemo,demo:reviewerDemo,reviewerAi:reviewerDemo&&job.model!=='demo-local-v1'});
         await repo.updateLead(lead.id,{results_notified_at:new Date().toISOString()});
       } catch (error) { log.warn('results_email_failed', { leadId: lead.id, error: error.message }); }
     }
@@ -77,11 +71,40 @@ export async function processOneJob(workerId, {leadId=null}={}) {
   return processClaimedJob(job);
 }
 
+export async function processOneReviewerJob(workerId) {
+  const job=await repo.claimReviewerJob(workerId);
+  if(!job)return false;
+  return processClaimedJob(job);
+}
+
 export async function processReviewerDemoLead(leadId) {
   const workerId=`reviewer-${leadId.slice(0,8)}-${randomUUID().slice(0,8)}`;
   let processed=0;
   while(processed<10&&await processOneJob(workerId,{leadId}))processed+=1;
   return processed;
+}
+
+export async function startInlineReviewerWorker({signal,once=false}={}) {
+  const workerId=`reviewer-inline-${process.pid}-${randomUUID().slice(0,8)}`;
+  let lastRecovery=0;
+  log.info('reviewer_ai_worker_started',{workerId,concurrency:config.reviewerAiConcurrency,model:config.aiPrimaryModel});
+  while(!signal?.aborted){
+    let didWork=false;
+    try{
+      if(Date.now()-lastRecovery>5*60_000){
+        const recovered=await repo.recoverStaleReviewerJobs(new Date(Date.now()-30*60_000).toISOString());
+        if(recovered)log.warn('reviewer_ai_jobs_recovered',{count:recovered});
+        lastRecovery=Date.now();
+      }
+      const results=await Promise.all(Array.from({length:config.reviewerAiConcurrency},()=>processOneReviewerJob(workerId)));
+      didWork=results.some(Boolean);
+      if(once)return didWork;
+    }catch(error){
+      log.error('reviewer_ai_worker_iteration_failed',{error:error.stack||error.message});
+      if(once)throw error;
+    }
+    if(!didWork)await sleep(config.reviewerAiPollMs);
+  }
 }
 
 export async function cleanupExpiredData() {

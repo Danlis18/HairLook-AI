@@ -4,7 +4,7 @@ import sharp from 'sharp';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { repo } from '../lib/repository.js';
-import { putOriginal, signedResultUrl, deleteOriginal, deleteResult } from '../lib/storage.js';
+import { putOriginal, signedResultUrl, getResultBuffer, deleteOriginal, deleteResult } from '../lib/storage.js';
 import { randomToken, tokenHash, hashIp, randomOtpCode, sha256, safeEqual } from '../lib/crypto.js';
 import { signLeadForCheckout } from '../lib/paddle.js';
 import { sendMagicLink, sendVerificationCode } from '../lib/mailer.js';
@@ -13,6 +13,7 @@ import { localeFromBody, localeFromLead, normalizeCountry, resolveRequestLocale 
 import { cryptoPriceForLead, storefrontPricing } from '../lib/pricing.js';
 import { queueReviewerDemo, startReviewerDemoProcessing, RESULT_TARGET_COUNT } from '../services/fulfillment.js';
 import { leadSession, optionalLeadSession, optionalReviewerAccess, reviewerAccess, sameOrigin, noStore } from '../middleware.js';
+import { buildResultsPdf } from '../lib/resultsPdf.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 1 } });
@@ -59,6 +60,7 @@ function clientConfig(settings = {}, localeContext = {locale:'en',country:''}, l
     checkoutEnabled: String(settings.checkout_enabled ?? config.checkoutEnabled) !== 'false',
     demoMode: config.demoMode,
     reviewerDemo,
+    reviewerAiEnabled: reviewerDemo && config.reviewerAiEnabled,
     maxUploadMb: config.maxUploadMb,
     legalBusinessName: config.legalBusinessName,
     legalBusinessAddress: config.legalBusinessAddress,
@@ -226,6 +228,7 @@ router.post('/demo/pay', sameOrigin, leadSession, async (req,res,next) => { try 
 } catch (e) { next(e); } });
 
 router.post('/reviewer/pay', sameOrigin, leadSession, reviewerAccess, async (req,res,next) => { try {
+  if(config.isProduction&&!config.reviewerAiEnabled)return res.status(503).json({error:'reviewer_ai_not_configured'});
   if(config.emailVerificationEnabled&&!req.lead.email_verified_at)return res.status(403).json({error:'email_verification_required'});
   if(req.lead.upload_status!=='ready')return res.status(409).json({error:'upload_not_ready'});
   if(req.lead.payment_status==='paid')return res.json({ok:true,alreadyPaid:true,redirect:'/dashboard'});
@@ -233,12 +236,12 @@ router.post('/reviewer/pay', sameOrigin, leadSession, reviewerAccess, async (req
   const paidAt=new Date().toISOString();
   const orderId=`REVIEWER-${req.lead.id}`;
   const updatedLead=await repo.updateLead(req.lead.id,{payment_status:'paid',payment_provider:'reviewer_demo',payment_order_id:orderId,payment_amount:0,payment_currency:'USD',paid_at:paidAt,generation_status:'queued'});
-  await repo.upsertPayment({lead_id:req.lead.id,provider:'reviewer_demo',provider_order_id:orderId,status:'paid',amount:0,currency:'USD',paid_at:paidAt,raw_payload:{reviewerDemo:true,noCharge:true,inviteId:req.reviewerInvite.id}});
+  await repo.upsertPayment({lead_id:req.lead.id,provider:'reviewer_demo',provider_order_id:orderId,status:'paid',amount:0,currency:'USD',paid_at:paidAt,raw_payload:{reviewerDemo:true,noCharge:true,inviteId:req.reviewerInvite.id,generationMode:config.reviewerAiEnabled?'ai':'local',model:config.reviewerAiEnabled?config.aiPrimaryModel:'demo-local-v1'}});
   await repo.insertAnalytics({session_id:req.body?.sessionId||'reviewer-demo',lead_id:req.lead.id,event_name:'reviewer_checkout_start',metadata:{provider:'reviewer_demo',noCharge:true}});
   await repo.insertAnalytics({session_id:req.body?.sessionId||'reviewer-demo',lead_id:req.lead.id,event_name:'reviewer_payment_success',metadata:{provider:'reviewer_demo',amount:0,currency:'USD',noCharge:true}});
-  await queueReviewerDemo(updatedLead);
+  const queued=await queueReviewerDemo(updatedLead);
   startReviewerDemoProcessing(req.lead.id);
-  res.json({ok:true,noCharge:true,targetCount:RESULT_TARGET_COUNT,redirect:'/dashboard'});
+  res.json({ok:true,noCharge:true,targetCount:RESULT_TARGET_COUNT,generationMode:queued.mode,redirect:'/dashboard'});
 } catch (e) { next(e); } });
 
 router.get('/dashboard', noStore, leadSession, async (req,res,next) => { try {
@@ -256,7 +259,7 @@ router.get('/dashboard', noStore, leadSession, async (req,res,next) => { try {
     value:isCrypto ? cryptoPriceForLead(req.lead) : Number(req.lead.payment_amount || cryptoPriceForLead(req.lead)),
     currency:isCrypto ? 'USD' : String(req.lead.payment_currency || config.siteCurrency || 'USD').toUpperCase()
   } : null;
-  res.json({ lead:{ id:req.lead.id, email:req.lead.email, paymentStatus:req.lead.payment_status, generationStatus:req.lead.generation_status, accessMode:req.lead.access_mode||'customer', profile:{ ageRange:req.lead.age_range, currentLength:req.lead.current_length, desiredLength:req.lead.desired_length, texture:req.lead.texture, currentColor:req.lead.current_color, desiredColors:req.lead.desired_colors, styleGoals:req.lead.style_goals, grayPreference:req.lead.gray_preference } }, purchase, targetCount, results:safe });
+  res.json({ lead:{ id:req.lead.id, email:req.lead.email, paymentStatus:req.lead.payment_status, generationStatus:req.lead.generation_status, accessMode:req.lead.access_mode||'customer', profile:{ ageRange:req.lead.age_range, currentLength:req.lead.current_length, desiredLength:req.lead.desired_length, texture:req.lead.texture, currentColor:req.lead.current_color, desiredColors:req.lead.desired_colors, styleGoals:req.lead.style_goals, grayPreference:req.lead.gray_preference } }, purchase, targetCount, reviewerAiEnabled:req.lead.access_mode==='reviewer_demo'&&config.reviewerAiEnabled, results:safe });
 } catch (e) { next(e); } });
 
 router.get('/results/:id/download', leadSession, async (req,res,next) => { try {
@@ -264,6 +267,22 @@ router.get('/results/:id/download', leadSession, async (req,res,next) => { try {
   if (!result || result.lead_id !== req.lead.id || result.deleted_at) return res.status(404).end();
   await repo.insertAnalytics({ session_id:'server', lead_id:req.lead.id, event_name:'download_result', metadata:{ resultId:result.id } });
   res.redirect(await signedResultUrl(result.storage_path, 120, true));
+} catch (e) { next(e); } });
+
+router.get('/results/collection.pdf', noStore, leadSession, async (req,res,next) => { try {
+  if(req.lead.payment_status!=='paid')return res.status(403).json({error:'payment_required'});
+  const results=(await repo.listResults(req.lead.id)).filter(result=>!result.deleted_at);
+  if(!results.length)return res.status(409).json({error:'results_not_ready'});
+  const pdf=await buildResultsPdf({
+    results,
+    locale:localeFromLead(req.lead),
+    loadImage:result=>getResultBuffer(result.storage_path)
+  });
+  await repo.insertAnalytics({session_id:'server',lead_id:req.lead.id,event_name:'download_results_pdf',metadata:{resultCount:results.length}}).catch(()=>{});
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition','attachment; filename="premium-hairstyles-collection.pdf"');
+  res.setHeader('Content-Length',String(pdf.length));
+  res.end(pdf);
 } catch (e) { next(e); } });
 
 router.post('/auth/request-link', sameOrigin, async (req,res,next) => { try {
@@ -284,7 +303,7 @@ router.get('/auth/magic', async (req,res,next) => { try {
   const link = await repo.consumeMagicLink(tokenHash(raw));
   if (!link || link.purpose !== 'user') return res.redirect('/signin?error=expired');
   await createLeadSession(res, link.lead_id);
-  res.redirect('/dashboard');
+  res.redirect(req.query.next==='pdf'?'/api/results/collection.pdf':'/dashboard');
 } catch (e) { next(e); } });
 
 router.delete('/account', sameOrigin, leadSession, async (req,res,next) => { try {

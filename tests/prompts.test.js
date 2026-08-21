@@ -7,8 +7,14 @@ test('builds exactly 10 varied hairstyle jobs with stable ordering', () => {
   const jobs=buildGenerationJobs(lead,10,'model');
   assert.equal(jobs.length,10);
   assert.equal(new Set(jobs.map(j=>j.sort_order)).size,10);
-  assert.ok(jobs.every(j=>j.prompt.includes('Preserve the same person and identity')));
-  assert.ok(jobs.some(j=>j.category==='Gray-Friendly'));
-  assert.ok(jobs.some(j=>j.category==='Easy-Care'));
-  assert.ok(jobs.some(j=>j.category==='Bolder Options'));
+  assert.equal(new Set(jobs.map(j=>j.style_name)).size,10);
+  assert.ok(jobs.every(j=>j.prompt.includes('LOCK THE PERSON AND PHOTO')));
+  assert.ok(jobs.every(j=>j.prompt.includes('LOCK THE ORIGINAL HAIR COLOR')));
+  assert.ok(jobs.every(j=>j.prompt.includes('do not change lip shape or lip color')));
+  assert.ok(jobs.some(j=>j.style_name.includes('Pixie')));
+  assert.ok(jobs.some(j=>j.style_name.includes('Bob')));
+  assert.ok(jobs.some(j=>j.style_name.includes('Butterfly')));
+  assert.ok(jobs.some(j=>j.style_name.includes('Wolf')));
+  assert.ok(jobs.every(j=>!['Color Directions','Gray-Friendly'].includes(j.category)));
+  assert.ok(jobs.every(j=>!j.prompt.includes('Gray blending')));
 });

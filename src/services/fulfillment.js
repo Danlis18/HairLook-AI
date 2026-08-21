@@ -7,13 +7,18 @@ import { processReviewerDemoLead } from './workerLoop.js';
 export const RESULT_TARGET_COUNT=10;
 
 export async function queueReviewerDemo(lead) {
-  const jobs=buildGenerationJobs(lead,RESULT_TARGET_COUNT,'demo-local-v1');
+  const model=config.reviewerAiEnabled?config.aiPrimaryModel:'demo-local-v1';
+  const jobs=buildGenerationJobs(lead,RESULT_TARGET_COUNT,model);
   const created=await repo.enqueueJobsIfEmpty(lead.id,jobs);
   if(created)await repo.updateLead(lead.id,{generation_status:'queued'});
-  return {created,count:jobs.length};
+  return {created,count:jobs.length,mode:config.reviewerAiEnabled?'ai':'local',model};
 }
 
 export function startReviewerDemoProcessing(leadId) {
+  // Real reviewer AI is handled by the resumable reviewer-only loop that runs
+  // inside the web service. The immediate path is retained for zero-cost local
+  // previews when no external provider is enabled.
+  if(config.reviewerAiEnabled)return;
   setImmediate(()=>processReviewerDemoLead(leadId).catch(error=>log.error('reviewer_demo_processing_failed',{leadId,error:error.message})));
 }
 

@@ -33,6 +33,12 @@ export async function signedResultUrl(key, expires=config.signedUrlTtlSeconds, d
   const {data,error}=await getSupabase().storage.from(config.resultsBucket).createSignedUrl(key,expires,download?{download:true}:undefined);if(error)throw error;return data.signedUrl;
 }
 
+export async function getResultBuffer(key) {
+  if(config.demoMode)return fs.readFile(path.resolve('data/results',key));
+  const {data,error}=await getSupabase().storage.from(config.resultsBucket).download(key);if(error)throw error;
+  return Buffer.from(await data.arrayBuffer());
+}
+
 export async function deleteOriginal(key) {
   if(!key)return;
   if(config.demoMode){await fs.rm(path.resolve('data/uploads',key),{force:true});return;}

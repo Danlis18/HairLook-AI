@@ -190,6 +190,26 @@ export const repo = {
     const {data,error}=await getSupabase().rpc('claim_generation_job_for_lead',{p_worker_id:workerId,p_lead_id:leadId});if(error)throw error;return Array.isArray(data)?data[0]||null:data;
   },
 
+  async claimReviewerJob(workerId) {
+    if(config.demoMode){
+      const s=loadDemo();
+      const reviewerIds=new Set(s.hair_leads.filter(x=>x.access_mode==='reviewer_demo'&&x.payment_status==='paid').map(x=>x.id));
+      const job=s.generation_jobs.filter(x=>reviewerIds.has(x.lead_id)&&(x.status==='queued'||(x.status==='retry'&&(!x.run_after||x.run_after<=now())))).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.created_at.localeCompare(b.created_at))[0];
+      if(!job)return null;
+      job.status='processing';job.worker_id=workerId;job.started_at=now();job.updated_at=now();job.attempts=(job.attempts||0)+1;saveDemo(s);return normalizeRow(job);
+    }
+    const {data,error}=await getSupabase().rpc('claim_reviewer_generation_job',{p_worker_id:workerId});if(error)throw error;return Array.isArray(data)?data[0]||null:data;
+  },
+
+  async recoverStaleReviewerJobs(cutoffIso) {
+    if(config.demoMode){
+      const s=loadDemo();const reviewerIds=new Set(s.hair_leads.filter(x=>x.access_mode==='reviewer_demo').map(x=>x.id));let count=0;
+      for(const job of s.generation_jobs){if(reviewerIds.has(job.lead_id)&&job.status==='processing'&&job.started_at&&job.started_at<cutoffIso){job.status='retry';job.worker_id=null;job.error='Recovered after interrupted reviewer processing';job.run_after=now();job.updated_at=now();count++;}}
+      if(count)saveDemo(s);return count;
+    }
+    const {data,error}=await getSupabase().rpc('recover_stale_reviewer_generation_jobs',{p_stale_before:cutoffIso});if(error)throw error;return Number(data||0);
+  },
+
   async updateJob(id, patch) {
     patch.updated_at=now();
     if(config.demoMode){const s=loadDemo();const i=s.generation_jobs.findIndex(x=>x.id===id);if(i<0)return null;s.generation_jobs[i]={...s.generation_jobs[i],...patch};saveDemo(s);return normalizeRow(s.generation_jobs[i]);}

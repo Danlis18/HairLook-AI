@@ -12,7 +12,7 @@ function getReplicate(){
 }
 
 export async function generateHairEdit({lead,job}){
-  if(config.demoMode||job.model==='demo-local-v1'){
+  if(job.model==='demo-local-v1'){
     const original=await getOriginalBuffer(lead.upload_path);
     const variants=[
       {brightness:1.02,saturation:1.00,hue:0}, {brightness:1.04,saturation:0.92,hue:8},

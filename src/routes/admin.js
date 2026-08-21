@@ -10,6 +10,7 @@ import { sendMagicLink, sendResultsReady } from '../lib/mailer.js';
 import { localeFromLead } from '../lib/locale.js';
 import { signedOriginalUrl, signedResultUrl, putResult, deleteOriginal, deleteResult } from '../lib/storage.js';
 import { adminSession, sameOrigin, noStore } from '../middleware.js';
+import { createResultsDeliveryLinks } from '../services/resultsDelivery.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 1 } });
@@ -31,13 +32,6 @@ async function startAdminSession(res, email) {
   const expiresAt = new Date(Date.now() + config.adminSessionTtlHours * 3600_000).toISOString();
   await repo.createAdminSession(email, tokenHash(sessionRaw), expiresAt);
   res.cookie('hair_admin_session', sessionRaw, adminCookieOptions());
-}
-
-async function resultsAccessUrl(lead) {
-  const raw=randomToken();
-  const expiresAt=new Date(Date.now()+Math.max(config.magicLinkTtlMinutes,1440)*60_000).toISOString();
-  await repo.createMagicLink({email:lead.email,purpose:'user',leadId:lead.id,tokenHash:tokenHash(raw),expiresAt});
-  return `${config.appUrl}/auth/magic?token=${encodeURIComponent(raw)}`;
 }
 
 function csvCell(value) {
@@ -170,7 +164,8 @@ router.post('/customers/:id/send-results', sameOrigin, adminSession, async (req,
     const id = uuidSchema.parse(req.params.id);
     const lead = await repo.getLead(id);
     if (!lead) return res.status(404).json({ error: 'not_found' });
-    await sendResultsReady({to:lead.email,locale:localeFromLead(lead),url:await resultsAccessUrl(lead),force:lead.access_mode==='reviewer_demo',demo:lead.access_mode==='reviewer_demo'});
+    const {url,pdfUrl}=await createResultsDeliveryLinks(lead);
+    await sendResultsReady({to:lead.email,locale:localeFromLead(lead),url,pdfUrl,force:lead.access_mode==='reviewer_demo',demo:lead.access_mode==='reviewer_demo',reviewerAi:lead.access_mode==='reviewer_demo'&&config.reviewerAiEnabled});
     await repo.audit({ adminEmail: req.admin.email, action: 'results_email_send', targetType: 'customer', targetId: id });
     res.json({ ok: true });
   } catch (error) { next(error); }
@@ -221,7 +216,8 @@ router.post('/customers/:id/complete', sameOrigin, adminSession, async (req, res
     if (!count) return res.status(400).json({ error: 'no_results' });
     const updated = await repo.updateLead(id, { generation_status: 'completed' });
     if (!updated?.results_notified_at) {
-      await sendResultsReady({to:lead.email,locale:localeFromLead(lead),url:await resultsAccessUrl(lead),force:lead.access_mode==='reviewer_demo',demo:lead.access_mode==='reviewer_demo'}).catch(() => {});
+      const {url,pdfUrl}=await createResultsDeliveryLinks(lead);
+      await sendResultsReady({to:lead.email,locale:localeFromLead(lead),url,pdfUrl,force:lead.access_mode==='reviewer_demo',demo:lead.access_mode==='reviewer_demo',reviewerAi:lead.access_mode==='reviewer_demo'&&config.reviewerAiEnabled}).catch(() => {});
       await repo.updateLead(id, { results_notified_at: new Date().toISOString() });
     }
     await repo.audit({ adminEmail: req.admin.email, action: 'fulfillment_complete', targetType: 'customer', targetId: id, metadata: { count } });
@@ -253,7 +249,7 @@ router.get('/generations', noStore, adminSession, async (req, res, next) => {
 });
 
 router.get('/reviewer-invites', noStore, adminSession, async (req,res,next) => { try {
-  res.json({rows:await repo.listReviewerInvites(Math.min(Number(req.query.limit||100),200))});
+  res.json({rows:await repo.listReviewerInvites(Math.min(Number(req.query.limit||100),200)),aiEnabled:config.reviewerAiEnabled,model:config.reviewerAiEnabled?config.aiPrimaryModel:null});
 } catch (error) { next(error); } });
 
 router.post('/reviewer-invites', sameOrigin, adminSession, async (req,res,next) => { try {

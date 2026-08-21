@@ -15,7 +15,7 @@ import adminRoutes from './routes/admin.js';
 import { log } from './lib/log.js';
 import { GEO_COUNTRY_COOKIE, GEO_LOCALE_COOKIE, LOCALE_COOKIE, resolveRequestLocale } from './lib/locale.js';
 import { applyPricingToHtml, storefrontPricing } from './lib/pricing.js';
-import { startWorker } from './services/workerLoop.js';
+import { startInlineReviewerWorker, startWorker } from './services/workerLoop.js';
 
 assertProductionConfig();
 const app = express();
@@ -61,7 +61,7 @@ app.use('/api/auth', authLimiter);
 app.use('/api/admin/auth', authLimiter);
 app.use('/api/verify-email', authLimiter);
 
-app.get('/health', (req, res) => res.json({ ok: true, service: 'hairlook-ai', demoMode: config.demoMode, locale:config.siteLocale, currency:config.siteCurrency, paymentProvider:config.paymentProvider, timestamp: new Date().toISOString() }));
+app.get('/health', (req, res) => res.json({ ok: true, service: 'hairlook-ai', demoMode: config.demoMode, reviewerAiEnabled:config.reviewerAiEnabled, locale:config.siteLocale, currency:config.siteCurrency, paymentProvider:config.paymentProvider, timestamp: new Date().toISOString() }));
 app.use('/api', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/admin', adminRoutes);
@@ -206,4 +206,5 @@ app.use((error, req, res, next) => {
 const server = app.listen(config.port, () => log.info('server_started', { port: config.port, appUrl: config.appUrl, demoMode: config.demoMode, locale:config.siteLocale, currency:config.siteCurrency, paymentProvider:config.paymentProvider }));
 const controller = new AbortController();
 if (config.demoMode) startWorker({ signal: controller.signal }).catch(error => log.error('demo_worker_crash', { error:error.message }));
+if(config.reviewerAiEnabled)startInlineReviewerWorker({signal:controller.signal}).catch(error=>log.error('reviewer_ai_worker_crash',{error:error.stack||error.message}));
 for (const sig of ['SIGINT','SIGTERM']) process.on(sig, () => { controller.abort(); server.close(() => process.exit(0)); });
