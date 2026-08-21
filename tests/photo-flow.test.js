@@ -17,9 +17,11 @@ test('homepage CTA opens photo upload directly and keeps the quiz disabled',()=>
 test('lead creation accepts the photo-first flow and persists locale metadata',()=>{
   const route=read('src/routes/public.js');
   const app=read('public/app.js');
-  assert.match(route,/gender: z\.enum\(\['Woman','Man'\]\)/);
+  assert.match(route,/gender: z\.enum\(\['Woman','Man'\]\)\.default\('Woman'\)/);
   assert.match(app,/data-upload-gender/);
   assert.match(app,/genderRequired/);
+  assert.match(app,/\$\('#confirmError',flowContent\)\|\|\$\('#emailError',flowContent\)/);
+  assert.match(read('public/email-flow-fix.js'),/finally/);
   assert.match(route,/_locale:locale/);
   assert.match(route,/_quizEnabled:rawQuiz\?\._quizEnabled === true/);
   assert.match(route,/sendVerificationCode\(\{ to:lead\.email, code, locale \}\)/);

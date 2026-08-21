@@ -17,8 +17,11 @@ proceedFromEmail = async function proceedFromEmailSingleStep(){
   if(error)error.textContent='';
   const next=document.querySelector('#flowContinue');
   if(next){next.disabled=true;next.textContent=t('sending');}
-  await submitLead();
-  if(next && phase==='email'){next.disabled=false;next.textContent=t('sendCode');}
+  try{
+    await submitLead();
+  }finally{
+    if(next && phase==='email'){next.disabled=false;next.textContent=t('sendCode');}
+  }
 };
 
 const emailStepObserver=new MutationObserver(()=>{

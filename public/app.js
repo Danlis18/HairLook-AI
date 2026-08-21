@@ -307,7 +307,7 @@ function showEmailConfirm(){
   track('email_confirm_view');
 }
 async function submitLead(){
-  const confirmBtn=$('#confirmEmailBtn',flowContent), editBtn=$('#editEmailBtn',flowContent), error=$('#confirmError',flowContent);
+  const confirmBtn=$('#confirmEmailBtn',flowContent), editBtn=$('#editEmailBtn',flowContent), error=$('#confirmError',flowContent)||$('#emailError',flowContent);
   if(confirmBtn){confirmBtn.disabled=true;confirmBtn.textContent=t('preparing');}
   if(editBtn)editBtn.disabled=true;
   if(error)error.textContent='';
@@ -323,6 +323,7 @@ async function submitLead(){
   }catch(e){
     if(confirmBtn){confirmBtn.disabled=false;confirmBtn.textContent=t('confirmButton');}
     if(editBtn)editBtn.disabled=false;
+    if(phase==='email'){nextBtn.disabled=false;nextBtn.textContent=t('sendCode');}
     if(error)error.textContent=e.message==='image_too_small'?t('larger'):e.message==='unsupported_image'?t('unsupported'):t('uploadFailed');
   }
 }
