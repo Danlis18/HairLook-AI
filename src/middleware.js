@@ -13,6 +13,13 @@ export async function adminSession(req,res,next){
 }
 export async function optionalReviewerAccess(req,res,next){
   try{
+    // A reviewer cookie can outlive the one reviewer page. Never let that
+    // cookie turn a later, ordinary storefront upload into a reviewer order.
+    let reviewerRequested=req.query?.reviewer==='1';
+    if(!reviewerRequested&&req.get('referer')){
+      try{reviewerRequested=new URL(req.get('referer')).searchParams.get('reviewer')==='1';}catch{}
+    }
+    if(!reviewerRequested)return next();
     const raw=req.cookies?.hair_reviewer_access;
     if(raw){
       const invite=await repo.getReviewerInvite(tokenHash(raw));

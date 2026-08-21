@@ -59,6 +59,15 @@ test('reviewer checkout is bilingual, no-charge and excluded from Purchase track
   assert.match(dashboard,/As 10 prévias de demonstração estão prontas/);
 });
 
+test('a stale reviewer cookie cannot hijack a normal storefront upload',()=>{
+  const middleware=fs.readFileSync(new URL('../src/middleware.js',import.meta.url),'utf8');
+  const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.match(middleware,/reviewerRequested=req\.query\?\.reviewer==='1'/);
+  assert.match(middleware,/searchParams\.get\('reviewer'\)==='1'/);
+  assert.match(middleware,/if\(!reviewerRequested\)return next\(\)/);
+  assert.match(app,/const reviewerQuery/);
+});
+
 test('real reviewer AI runs in the web service without enabling customer generation',()=>{
   const config=fs.readFileSync(new URL('../src/config.js',import.meta.url),'utf8');
   const fulfillment=fs.readFileSync(new URL('../src/services/fulfillment.js',import.meta.url),'utf8');

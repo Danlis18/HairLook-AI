@@ -26,7 +26,7 @@ const copy = {
     invalidEmail:'Please enter a valid email address.', acceptTerms:'Please review and accept the Terms and Privacy Policy to continue.', updateFailed:'Could not update that email. Please try again.', serverFailed:'Could not reach the server.',
     confirmEmail:'Confirm your email', confirmTitle:'Please confirm your email', confirmBody:'We deliver your results and order updates to this address.', edit:'Edit', confirmButton:'Confirm email →', preparing:'Preparing…',
     checkEmail:'Check your email', otpTitle:'Enter your verification code', otpBody:'We sent a 6-digit code to', verify:'Verify →', verifying:'Verifying…', resend:'Resend code', changeEmail:'Change email', invalidCode:'Enter the 6-digit code from your email.', attempts:'Too many attempts. Please request a new code.', wrongCode:'That code is incorrect or has expired.', waitResend:s=>`Please wait ${s}s before requesting another code.`, resendFailed:'Could not resend the code right now.', resent:'A new code has been sent.',
-    underMb:mb=>`Please choose a photo under ${mb} MB.`, format:'Please use JPG, PNG, WEBP, HEIC or HEIF.', tooSmall:'This image is too small. Please choose at least 400 × 400 px.', uploadFailed:'We could not securely upload that photo. Please try another image.', unsupported:'That image format is not supported by this server.', larger:'Please choose a larger image.', sending:'Sending verification code…'
+    underMb:mb=>`Please choose a photo under ${mb} MB.`, format:'Please use JPG, PNG, WEBP, HEIC or HEIF.', tooSmall:'This image is too small. Please choose at least 400 × 400 px.', uploadFailed:'We could not securely upload that photo. Please try another image.', reviewerEmailMismatch:'This protected demo link is assigned to a different email address. Open a new demo link or use the assigned email.', unsupported:'That image format is not supported by this server.', larger:'Please choose a larger image.', sending:'Sending verification code…'
   },
   'pt-BR': {
     step:(current,total)=>`Etapa ${current} de ${total}`,
@@ -38,7 +38,7 @@ const copy = {
     invalidEmail:'Digite um endereço de e-mail válido.', acceptTerms:'Revise e aceite os Termos e a Política de Privacidade para continuar.', updateFailed:'Não foi possível atualizar o e-mail. Tente novamente.', serverFailed:'Não foi possível conectar ao servidor.',
     confirmEmail:'Confirme seu e-mail', confirmTitle:'Confirme seu endereço de e-mail', confirmBody:'Enviamos seus resultados e atualizações do pedido para este endereço.', edit:'Editar', confirmButton:'Confirmar e-mail →', preparing:'Preparando…',
     checkEmail:'Verifique seu e-mail', otpTitle:'Digite o código de verificação', otpBody:'Enviamos um código de 6 dígitos para', verify:'Verificar →', verifying:'Verificando…', resend:'Reenviar código', changeEmail:'Alterar e-mail', invalidCode:'Digite o código de 6 dígitos enviado por e-mail.', attempts:'Muitas tentativas. Solicite um novo código.', wrongCode:'O código está incorreto ou expirou.', waitResend:s=>`Aguarde ${s}s antes de solicitar outro código.`, resendFailed:'Não foi possível reenviar o código agora.', resent:'Um novo código foi enviado.',
-    underMb:mb=>`Escolha uma foto com menos de ${mb} MB.`, format:'Use JPG, PNG, WEBP, HEIC ou HEIF.', tooSmall:'Esta imagem é muito pequena. Escolha uma foto de pelo menos 400 × 400 px.', uploadFailed:'Não foi possível enviar a foto com segurança. Tente outra imagem.', unsupported:'Este formato de imagem não é compatível com o servidor.', larger:'Escolha uma imagem maior.', sending:'Enviando código de verificação…'
+    underMb:mb=>`Escolha uma foto com menos de ${mb} MB.`, format:'Use JPG, PNG, WEBP, HEIC ou HEIF.', tooSmall:'Esta imagem é muito pequena. Escolha uma foto de pelo menos 400 × 400 px.', uploadFailed:'Não foi possível enviar a foto com segurança. Tente outra imagem.', reviewerEmailMismatch:'Este link protegido de demonstração está associado a outro e-mail. Abra um novo link ou use o e-mail indicado.', unsupported:'Este formato de imagem não é compatível com o servidor.', larger:'Escolha uma imagem maior.', sending:'Enviando código de verificação…'
   }
 };
 const t = (key, ...args) => {
@@ -134,7 +134,8 @@ let answers = JSON.parse(sessionStorage.getItem('hairlook_quiz_answers') || '{}'
 let phase = 'quiz';
 let photoFile = null;
 let config = { maxUploadMb:12, originalRetentionHours:24 };
-fetch('/api/config').then(r=>r.json()).then(v=>config=v).catch(()=>{});
+const reviewerQuery = new URLSearchParams(location.search).get('reviewer')==='1'?'?reviewer=1':'';
+fetch(`/api/config${reviewerQuery}`).then(r=>r.json()).then(v=>config=v).catch(()=>{});
 
 function saveQuiz() {
   sessionStorage.setItem('hairlook_quiz_answers', JSON.stringify(answers));
@@ -314,7 +315,7 @@ async function submitLead(){
   const submissionAnswers={...answers,_locale:activeLocale,_quizEnabled:QUIZ_ENABLED};
   const data=new FormData(); data.append('photo',photoFile); data.append('email',leadEmail); data.append('consent','true'); data.append('quiz',JSON.stringify(submissionAnswers)); data.append('locale',activeLocale); data.append('country',document.documentElement.dataset.country||''); data.append('utm',JSON.stringify(utm)); data.append('landingUrl',location.href.slice(0,1000)); data.append('sessionId',sessionId);
   try{
-    const res=await fetch('/api/leads',{method:'POST',body:data}); const body=await res.json().catch(()=>({}));
+    const res=await fetch(`/api/leads${reviewerQuery}`,{method:'POST',body:data}); const body=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(body.error||'upload_failed');
     sessionStorage.setItem('hairlook_lead_id',body.leadId); track('email_submit',{leadCreated:true});
     leadCreated=true; pendingNext=body.next||'/personal-plan';
@@ -324,7 +325,7 @@ async function submitLead(){
     if(confirmBtn){confirmBtn.disabled=false;confirmBtn.textContent=t('confirmButton');}
     if(editBtn)editBtn.disabled=false;
     if(phase==='email'){nextBtn.disabled=false;nextBtn.textContent=t('sendCode');}
-    if(error)error.textContent=e.message==='image_too_small'?t('larger'):e.message==='unsupported_image'?t('unsupported'):t('uploadFailed');
+    if(error)error.textContent=e.message==='image_too_small'?t('larger'):e.message==='unsupported_image'?t('unsupported'):e.message==='reviewer_email_mismatch'?t('reviewerEmailMismatch'):t('uploadFailed');
   }
 }
 

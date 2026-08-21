@@ -22,6 +22,8 @@ test('lead creation accepts the photo-first flow and persists locale metadata',(
   assert.match(app,/genderRequired/);
   assert.match(app,/\$\('#confirmError',flowContent\)\|\|\$\('#emailError',flowContent\)/);
   assert.match(read('public/email-flow-fix.js'),/finally/);
+  assert.match(app,/\/api\/leads\$\{reviewerQuery\}/);
+  assert.match(app,/reviewer_email_mismatch/);
   assert.match(route,/_locale:locale/);
   assert.match(route,/_quizEnabled:rawQuiz\?\._quizEnabled === true/);
   assert.match(route,/sendVerificationCode\(\{ to:lead\.email, code, locale \}\)/);
