@@ -64,8 +64,17 @@ test('a stale reviewer cookie cannot hijack a normal storefront upload',()=>{
   const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
   assert.match(middleware,/reviewerRequested=req\.query\?\.reviewer==='1'/);
   assert.match(middleware,/searchParams\.get\('reviewer'\)==='1'/);
-  assert.match(middleware,/if\(!reviewerRequested\)return next\(\)/);
+  assert.match(middleware,/if\(!reviewerRequested&&!reviewerLead\)return next\(\)/);
   assert.match(app,/const reviewerQuery/);
+});
+
+test('a created reviewer order keeps free checkout after leaving the invite URL',()=>{
+  const middleware=fs.readFileSync(new URL('../src/middleware.js',import.meta.url),'utf8');
+  const publicRoute=fs.readFileSync(new URL('../src/routes/public.js',import.meta.url),'utf8');
+  assert.match(middleware,/reviewerLead=req\.lead\?\.access_mode==='reviewer_demo'/);
+  assert.match(middleware,/!reviewerRequested&&!reviewerLead/);
+  assert.match(middleware,/invite\?\.lead_id===req\.lead\.id/);
+  assert.match(publicRoute,/optionalLeadSession, optionalReviewerAccess/);
 });
 
 test('real reviewer AI runs in the web service without enabling customer generation',()=>{

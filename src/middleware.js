@@ -19,11 +19,14 @@ export async function optionalReviewerAccess(req,res,next){
     if(!reviewerRequested&&req.get('referer')){
       try{reviewerRequested=new URL(req.get('referer')).searchParams.get('reviewer')==='1';}catch{}
     }
-    if(!reviewerRequested)return next();
+    const reviewerLead=req.lead?.access_mode==='reviewer_demo';
+    if(!reviewerRequested&&!reviewerLead)return next();
     const raw=req.cookies?.hair_reviewer_access;
     if(raw){
       const invite=await repo.getReviewerInvite(tokenHash(raw));
-      if(invite&&!invite.revoked_at&&new Date(invite.expires_at).getTime()>Date.now())req.reviewerInvite=invite;
+      const active=invite&&!invite.revoked_at&&new Date(invite.expires_at).getTime()>Date.now();
+      const matchesLead=!reviewerLead||invite?.lead_id===req.lead.id;
+      if(active&&matchesLead)req.reviewerInvite=invite;
     }
     next();
   }catch(e){next(e);}
