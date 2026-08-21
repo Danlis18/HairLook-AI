@@ -77,6 +77,15 @@ test('a created reviewer order keeps free checkout after leaving the invite URL'
   assert.match(publicRoute,/optionalLeadSession, optionalReviewerAccess/);
 });
 
+test('admin exposes generation errors and a safe retry control',()=>{
+  const admin=fs.readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
+  const html=fs.readFileSync(new URL('../public/admin.html',import.meta.url),'utf8');
+  assert.match(html,/<th>Error<\/th>/);
+  assert.match(admin,/job\.error\|\|'—'/);
+  assert.match(admin,/data-action="retry-jobs"/);
+  assert.match(admin,/customers\/\$\{id\}\/retry/);
+});
+
 test('real reviewer AI runs in the web service without enabling customer generation',()=>{
   const config=fs.readFileSync(new URL('../src/config.js',import.meta.url),'utf8');
   const fulfillment=fs.readFileSync(new URL('../src/services/fulfillment.js',import.meta.url),'utf8');
