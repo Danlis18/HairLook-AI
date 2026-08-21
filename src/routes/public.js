@@ -19,7 +19,7 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 1 } });
 const emailSchema = z.string().trim().toLowerCase().email().max(254);
 const quizSchema = z.object({
-  gender: z.string().max(40).default('Not provided'), ageRange: z.string().max(30).default('Not provided'), currentLength: z.string().max(40).default('Not provided'), desiredLength: z.string().max(60).default('Not provided'),
+  gender: z.enum(['Woman','Man']), ageRange: z.string().max(30).default('Not provided'), currentLength: z.string().max(40).default('Not provided'), desiredLength: z.string().max(60).default('Not provided'),
   texture: z.string().max(40).default('Not provided'), currentColor: z.string().max(40).default('Not provided'), desiredColors: z.array(z.string().max(40)).max(8).default([]), styleGoals: z.array(z.string().max(60)).max(8).default([]),
   stylePersonality: z.string().max(50).default('Not provided'), maintenanceLevel: z.string().max(50).default('Not provided'), bangsPreference: z.string().max(50).default('Not provided'), grayPreference: z.string().max(60).default('Not provided')
 });

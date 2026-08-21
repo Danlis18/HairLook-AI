@@ -15,14 +15,16 @@ const PT_STYLE_NAMES={
   'Curly Layered Midi':'Midi Cacheado em Camadas',
   'Long Butterfly Layers':'Camadas Borboleta Longas',
   'Long U-Shaped Layers':'Camadas Longas em Formato U',
-  'Modern Soft Wolf Cut':'Wolf Cut Moderno e Suave'
+  'Modern Soft Wolf Cut':'Wolf Cut Moderno e Suave',
+  'Clean Buzz Cut':'Buzz Cut Limpo','Textured French Crop':'French Crop Texturizado','Classic Crew Cut':'Crew Cut Clássico','Low Taper Fade':'Degradê Baixo','Curly Top Fade':'Degradê com Topo Cacheado','Side-Part Taper':'Corte Clássico com Risca Lateral','Modern Textured Quiff':'Topete Moderno Texturizado','Medium Bro Flow':'Bro Flow Médio','Layered Curtain Cut':'Corte Cortina em Camadas','Modern Pompadour Undercut':'Pompadour Moderno com Undercut'
 };
 const PT_CATEGORIES={
   'Short Transformations':'Transformações Curtas',
   'Bob Collection':'Coleção Bob',
   'Medium Collection':'Cortes Médios',
   'Long Collection':'Cortes Longos',
-  'Statement Collection':'Cortes Marcantes'
+  'Statement Collection':'Cortes Marcantes',
+  'Short Men’s Collection':'Cortes Masculinos Curtos','Fade & Taper Collection':'Degradês e Tapers','Classic Men’s Collection':'Cortes Masculinos Clássicos','Medium Men’s Collection':'Cortes Masculinos Médios','Statement Men’s Collection':'Cortes Masculinos Marcantes'
 };
 
 function xml(value=''){

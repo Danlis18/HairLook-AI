@@ -8,7 +8,7 @@ const C={
 }[locale];
 
 const PT_STYLE_NAMES={
-  'Classic Textured Pixie':'Pixie Clássico Texturizado','Soft Bixie Cut':'Corte Bixie Suave','Chin-Length French Bob':'Bob Francês na Altura do Queixo','Sleek Angled Bob':'Bob Angulado Elegante','Blunt Collarbone Lob':'Lob Reto na Altura da Clavícula','Shoulder-Length Shag':'Shag na Altura dos Ombros','Curly Layered Midi':'Midi Cacheado em Camadas','Long Butterfly Layers':'Camadas Borboleta Longas','Long U-Shaped Layers':'Camadas Longas em Formato U','Modern Soft Wolf Cut':'Wolf Cut Moderno e Suave'
+  'Classic Textured Pixie':'Pixie Clássico Texturizado','Soft Bixie Cut':'Corte Bixie Suave','Chin-Length French Bob':'Bob Francês na Altura do Queixo','Sleek Angled Bob':'Bob Angulado Elegante','Blunt Collarbone Lob':'Lob Reto na Altura da Clavícula','Shoulder-Length Shag':'Shag na Altura dos Ombros','Curly Layered Midi':'Midi Cacheado em Camadas','Long Butterfly Layers':'Camadas Borboleta Longas','Long U-Shaped Layers':'Camadas Longas em Formato U','Modern Soft Wolf Cut':'Wolf Cut Moderno e Suave','Clean Buzz Cut':'Buzz Cut Limpo','Textured French Crop':'French Crop Texturizado','Classic Crew Cut':'Crew Cut Clássico','Low Taper Fade':'Degradê Baixo','Curly Top Fade':'Degradê com Topo Cacheado','Side-Part Taper':'Corte Clássico com Risca Lateral','Modern Textured Quiff':'Topete Moderno Texturizado','Medium Bro Flow':'Bro Flow Médio','Layered Curtain Cut':'Corte Cortina em Camadas','Modern Pompadour Undercut':'Pompadour Moderno com Undercut'
 };
 const resultName=result=>locale==='pt-BR'?(PT_STYLE_NAMES[result.style_name]||result.style_name||'Prévia'):(result.style_name||'Preview');
 const safeText=value=>String(value||'').replace(/[&<>\"]/g,'');
