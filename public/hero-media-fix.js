@@ -98,6 +98,28 @@
   video.setAttribute('aria-label', copy.heroVideo);
   gallery.querySelectorAll('.hero-gallery-small, .hero-note').forEach((el) => el.remove());
 
+  // On phones and tablets the video is the first piece of hero content after
+  // the consultation eyebrow. Move the existing element instead of cloning it
+  // so playback state, loading and accessibility stay intact.
+  const heroGrid = document.querySelector('.hero-grid');
+  const heroCopy = document.querySelector('.hero-copy');
+  const eyebrow = heroCopy?.querySelector('.eyebrow');
+  const heroVisual = document.querySelector('.hero-visual');
+  const mobileHeroQuery = window.matchMedia('(max-width: 1020px)');
+  const syncHeroVideoPosition = () => {
+    if (!heroGrid || !heroCopy || !eyebrow || !heroVisual) return;
+    if (mobileHeroQuery.matches) {
+      if (eyebrow.nextElementSibling !== heroVisual) eyebrow.insertAdjacentElement('afterend', heroVisual);
+      heroVisual.classList.add('hero-visual-mobile-inline');
+      return;
+    }
+    if (heroVisual.parentElement !== heroGrid) heroGrid.appendChild(heroVisual);
+    heroVisual.classList.remove('hero-visual-mobile-inline');
+  };
+  syncHeroVideoPosition();
+  if (typeof mobileHeroQuery.addEventListener === 'function') mobileHeroQuery.addEventListener('change', syncHeroVideoPosition);
+  else mobileHeroQuery.addListener(syncHeroVideoPosition);
+
   const style = document.createElement('style');
   style.textContent = `
     .hero-gallery{position:relative!important;width:min(100%,560px)!important;height:auto!important;min-height:0!important;margin:0 auto!important;flex:0 1 auto!important}
@@ -111,8 +133,8 @@
     .face-photo-visual .face-profile-photo{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center 38%!important}
     .face-photo-visual::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 68%,rgba(19,37,31,.08));pointer-events:none}
     @media(min-width:1021px){.hero{min-height:760px!important;padding:38px 0 46px!important;overflow:visible!important}.hero-visual{display:flex!important;align-items:center!important;justify-content:center!important}}
-    @media(max-width:1020px){.hero-gallery{width:min(100%,520px)!important}}
-    @media(max-width:620px){.hero-gallery{width:100%!important}.hero-gallery-main{border-radius:24px!important}}
+    @media(max-width:1020px){.hero-copy>.hero-visual-mobile-inline{display:block!important;width:min(88%,520px)!important;margin:20px auto 28px!important}.hero-copy>.hero-visual-mobile-inline .hero-gallery{width:100%!important}.hero-gallery{width:min(100%,520px)!important}}
+    @media(max-width:620px){.hero-copy>.hero-visual-mobile-inline{width:100%!important;margin:16px auto 24px!important}.hero-gallery{width:100%!important}.hero-gallery-main{border-radius:24px!important}}
   `;
   document.head.appendChild(style);
 

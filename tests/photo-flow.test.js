@@ -63,3 +63,11 @@ test('English and Portuguese share the same visual polish and mobile upload beha
   assert.match(ptRuntime,/License & Acceptable Use','Licença e uso aceitável/);
   assert.doesNotMatch(ptFinal,/data-ui-polish|data-mobile-modal-fix|data-mobile-camera-upload|removeHeroTrustExtras/);
 });
+
+test('phone and tablet hero puts the existing video immediately after the consultation eyebrow',()=>{
+  const hero=read('public/hero-media-fix.js');
+  assert.match(hero,/matchMedia\('\(max-width: 1020px\)'\)/);
+  assert.match(hero,/eyebrow\.insertAdjacentElement\('afterend', heroVisual\)/);
+  assert.match(hero,/heroGrid\.appendChild\(heroVisual\)/);
+  assert.match(hero,/hero-visual-mobile-inline/);
+});
